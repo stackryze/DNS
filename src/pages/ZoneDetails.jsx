@@ -7,6 +7,12 @@ import debounce from 'lodash.debounce';
 import { useToast } from '../components/Toast';
 import ConfirmDialog from '../components/ConfirmDialog';
 
+// Helper to remove trailing dot from FQDN for display
+const stripTrailingDot = (str) => {
+    if (!str) return str;
+    return str.endsWith('.') ? str.slice(0, -1) : str;
+};
+
 const RecordBadge = ({ type }) => {
     const colors = {
         A: 'bg-[#003666] text-[#6FB2E8] border-[#004B8D]',
@@ -430,7 +436,7 @@ const ZoneDetails = () => {
                                 {recordName && recordName !== '@' && (
                                     <div className="px-3 py-2 bg-[#0A0A0A] border border-[#38BDF8]/30 rounded-lg">
                                         <span className="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Full Record Name</span>
-                                        <div className="text-sm font-mono text-[#38BDF8] mt-1">{recordName}.{zone.name}</div>
+                                        <div className="text-sm font-mono text-[#38BDF8] mt-1">{recordName}.{stripTrailingDot(zone.name)}</div>
                                     </div>
                                 )}
                                 
@@ -542,11 +548,11 @@ const ZoneDetails = () => {
                                                 <td className="px-3 md:px-6 py-2 md:py-3 align-top">
                                                     <RecordBadge type={rrset.type} />
                                                 </td>
-                                                <td className="px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm text-gray-300 font-mono align-top break-all" title={rrset.name}>
-                                                    {rrset.name}
+                                                <td className="px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm text-gray-300 font-mono align-top break-all" title={stripTrailingDot(rrset.name)}>
+                                                    {stripTrailingDot(rrset.name)}
                                                 </td>
                                                 <td className="px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm text-gray-300 font-mono align-top break-all">
-                                                    {record.content}
+                                                    {stripTrailingDot(record.content)}
                                                 </td>
                                                 <td className="px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm text-gray-400 align-top">
                                                     {rrset.ttl}s
