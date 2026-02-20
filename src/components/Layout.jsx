@@ -86,7 +86,15 @@ const Layout = ({ children }) => {
 
                 <div className="pt-6 border-t border-white/5">
                     <Link to="/settings" className="flex items-center gap-3 px-3 py-2 mb-2 rounded-lg hover:bg-white/5 transition-colors group">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#38BDF8] to-purple-600 ring-2 ring-[#121212] group-hover:ring-[#38BDF8]/20 transition-all"></div>
+                        {user?.avatarUrl ? (
+                            <img 
+                                src={user.avatarUrl} 
+                                alt={user.name || 'Profile'} 
+                                className="w-9 h-9 rounded-full ring-2 ring-[#121212] group-hover:ring-[#38BDF8]/20 transition-all object-cover"
+                            />
+                        ) : (
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#38BDF8] to-purple-600 ring-2 ring-[#121212] group-hover:ring-[#38BDF8]/20 transition-all"></div>
+                        )}
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-gray-200 group-hover:text-white transition-colors truncate">
                                 {user?.username || user?.name || 'Loading...'}
