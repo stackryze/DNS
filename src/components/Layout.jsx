@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { LayoutDashboard, Globe, Settings, LogOut, Search, Command, Bell, Menu, X, Activity, ExternalLink, Heart, FileText, Github } from 'lucide-react';
+import api from '../utils/api';
 
 const SidebarItem = ({ icon: Icon, label, to, active }) => (
     <Link to={to} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden
@@ -19,12 +20,28 @@ const Layout = ({ children }) => {
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [user, setUser] = useState(null);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) {
             navigate('/login');
+            return;
         }
+
+        // Fetch user data
+        const fetchUser = async () => {
+            try {
+                const response = await api.get('/auth/me');
+                setUser(response.data);
+            } catch (error) {
+                console.error('Failed to fetch user:', error);
+                localStorage.removeItem('token');
+                navigate('/login');
+            }
+        };
+
+        fetchUser();
     }, [navigate]);
 
     const handleLogout = () => {
@@ -71,8 +88,12 @@ const Layout = ({ children }) => {
                     <Link to="/settings" className="flex items-center gap-3 px-3 py-2 mb-2 rounded-lg hover:bg-white/5 transition-colors group">
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#38BDF8] to-purple-600 ring-2 ring-[#121212] group-hover:ring-[#38BDF8]/20 transition-all"></div>
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-gray-200 group-hover:text-white transition-colors truncate">Bhuvana Sudheer</p>
-                            <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">Admin</p>
+                            <p className="text-sm font-bold text-gray-200 group-hover:text-white transition-colors truncate">
+                                {user?.name || 'Loading...'}
+                            </p>
+                            <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
+                                {user?.email || ''}
+                            </p>
                         </div>
                     </Link>
 
