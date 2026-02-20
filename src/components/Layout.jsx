@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { LayoutDashboard, Globe, Settings, LogOut, Search, Command, Bell, Menu, X, Activity, ExternalLink, Heart, FileText, Github } from 'lucide-react';
-import api from '../utils/api';
+import api from '../services/api';
 
 const SidebarItem = ({ icon: Icon, label, to, active }) => (
     <Link to={to} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden
@@ -89,7 +89,7 @@ const Layout = ({ children }) => {
                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#38BDF8] to-purple-600 ring-2 ring-[#121212] group-hover:ring-[#38BDF8]/20 transition-all"></div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-gray-200 group-hover:text-white transition-colors truncate">
-                                {user?.name || 'Loading...'}
+                                {user?.username || user?.name || 'Loading...'}
                             </p>
                             <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
                                 {user?.email || ''}
