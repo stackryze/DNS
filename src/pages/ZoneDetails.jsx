@@ -55,6 +55,7 @@ const ZoneDetails = () => {
     const [recordType, setRecordType] = useState('A');
     const [recordName, setRecordName] = useState('@');
     const [recordContent, setRecordContent] = useState('');
+    const [mxPriority, setMxPriority] = useState('10'); // Default MX priority
     const [recordTTL, setRecordTTL] = useState(3600); // Default: 1 hour (minimum allowed)
     const [adding, setAdding] = useState(false);
     const [deleting, setDeleting] = useState(null); // ID or name of record being deleted
@@ -171,12 +172,7 @@ const ZoneDetails = () => {
                 return;
             }
         } else if (recordType === 'MX') {
-            const mxParts = recordContent.trim().split(/\s+/);
-            if (mxParts.length !== 2) {
-                toast.error('MX record must be in format: priority hostname (e.g., "10 mail.example.com")');
-                return;
-            }
-            const priority = parseInt(mxParts[0]);
+            const priority = parseInt(mxPriority);
             if (isNaN(priority) || priority < 0 || priority > 65535) {
                 toast.error('MX priority must be a number between 0 and 65535');
                 return;
@@ -185,15 +181,21 @@ const ZoneDetails = () => {
 
         setAdding(true);
         try {
+            // For MX records, combine priority with content
+            const finalContent = recordType === 'MX' 
+                ? `${mxPriority} ${recordContent}`
+                : recordContent;
+
             await addRecord(id, {
                 type: recordType,
                 name: recordName,
-                content: recordContent,
+                content: finalContent,
                 ttl: recordTTL
             });
             // Reset form
             setRecordName('@');
             setRecordContent('');
+            setMxPriority('10');
             setIsAddMode(false);
 
             toast.success(`${recordType} record added successfully`);
@@ -484,6 +486,21 @@ const ZoneDetails = () => {
 
                                 {/* Content - Full width row */}
                                 <div className="flex gap-3 md:gap-4">
+                                    {/* MX Priority Field - Only show for MX records */}
+                                    {recordType === 'MX' && (
+                                        <div className="w-24">
+                                            <input
+                                                type="number"
+                                                value={mxPriority}
+                                                onChange={(e) => setMxPriority(e.target.value)}
+                                                placeholder="10"
+                                                min="0"
+                                                max="65535"
+                                                className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none font-mono transition-colors"
+                                                title="Priority (0-65535)"
+                                            />
+                                        </div>
+                                    )}
                                     <div className="flex-1 relative">
                                         <input
                                             type="text"
@@ -493,7 +510,7 @@ const ZoneDetails = () => {
                                                 recordType === 'A' ? '192.0.2.1' :
                                                 recordType === 'AAAA' ? '2001:db8::1' :
                                                 recordType === 'CNAME' ? 'example.com' :
-                                                recordType === 'MX' ? '10 mail.example.com' :
+                                                recordType === 'MX' ? 'mail.example.com' :
                                                 recordType === 'TXT' ? 'v=spf1 include:_spf.example.com ~all' :
                                                 'content'
                                             }
