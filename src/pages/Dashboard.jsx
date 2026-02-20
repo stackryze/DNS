@@ -8,6 +8,7 @@ import { useToast } from '../components/Toast';
 const Dashboard = () => {
     const toast = useToast();
     const [zones, setZones] = useState([]);
+    const [limits, setLimits] = useState({ zoneLimit: 3, currentZones: 0, remainingZones: 3 });
     const [newZone, setNewZone] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -27,7 +28,10 @@ const Dashboard = () => {
     const fetchZones = async () => {
         try {
             const data = await getZones();
-            setZones(data);
+            setZones(data.zones || data); // Handle new format with limits
+            if (data.limits) {
+                setLimits(data.limits);
+            }
         } catch (err) {
             setError('Failed to fetch zones. Please check your connection.');
             console.error(err);
@@ -95,8 +99,8 @@ const Dashboard = () => {
                 </div>
 
                 {/* Quick Stats Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
-                    <StatCard icon={Server} label="Total Zones" value={zones.length} color="bg-blue-500/20 text-blue-400" border="border-blue-500/20" />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+                    <StatCard icon={Server} label="Total Zones" value={`${zones.length}/${limits.zoneLimit}`} color="bg-blue-500/20 text-blue-400" border="border-blue-500/20" subtitle={limits.remainingZones > 0 ? `${limits.remainingZones} remaining` : 'Limit reached'} />
                     <StatCard icon={Zap} label="Unverified" value={zones.filter(z => z.status === 'pending').length} color="bg-pink-500/20 text-pink-400" border="border-pink-500/20" />
                     <StatCard icon={ShieldCheck} label="Active" value={zones.filter(z => z.status === 'active').length} color="bg-emerald-500/20 text-emerald-400" border="border-emerald-500/20" />
                 </div>
@@ -186,7 +190,7 @@ const Dashboard = () => {
     );
 };
 
-const StatCard = ({ icon: Icon, label, value, color, border }) => (
+const StatCard = ({ icon: Icon, label, value, color, border, subtitle }) => (
     <div className={`bg-[#1a1a1a]/60 backdrop-blur-xl border border-white/5 p-2.5 md:p-6 rounded-lg md:rounded-2xl flex flex-col md:flex-row items-center gap-2 md:gap-5 hover:bg-[#1a1a1a]/80 transition-all hover:border-white/10 group shadow-lg`}>
         <div className={`p-1.5 md:p-4 rounded-lg md:rounded-xl ${color} ${border} border group-hover:scale-110 transition-transform`}>
             <Icon className="w-4 h-4 md:w-7 md:h-7" />
@@ -194,6 +198,7 @@ const StatCard = ({ icon: Icon, label, value, color, border }) => (
         <div className="text-center md:text-left">
             <p className="text-gray-500 text-[8px] md:text-[10px] uppercase tracking-wider md:tracking-widest font-bold mb-0.5 md:mb-1">{label}</p>
             <p className="text-lg md:text-3xl font-black text-white">{value}</p>
+            {subtitle && <p className="text-gray-400 text-[9px] md:text-xs mt-0.5 md:mt-1">{subtitle}</p>}
         </div>
     </div>
 );

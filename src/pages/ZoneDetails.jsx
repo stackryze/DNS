@@ -387,10 +387,18 @@ const ZoneDetails = () => {
             {/* DNS Records Section */}
             <div className={`space-y-4 ${isPending ? 'opacity-70 pointer-events-none grayscale-[0.5]' : ''}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-0 pt-4">
-                    <h2 className="text-lg md:text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                        <Globe className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
-                        DNS Records
-                    </h2>
+                    <div>
+                        <h2 className="text-lg md:text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                            <Globe className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
+                            DNS Records
+                        </h2>
+                        <p className="text-xs text-gray-400 mt-1">
+                            {zone.records_count || 0}/{zone.recordLimit || 200} records
+                            {zone.records_count >= (zone.recordLimit || 200) && (
+                                <span className="text-orange-400 ml-2">• Limit reached - Contact support to increase</span>
+                            )}
+                        </p>
+                    </div>
                     <div className="flex items-center gap-2 md:gap-3">
                         <button
                             onClick={() => fetchRecords(searchQuery)}
