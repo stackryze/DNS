@@ -445,6 +445,7 @@ const ZoneDetails = () => {
                                 <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
                                     {/* Type */}
                                     <div className="w-full sm:w-28 md:w-32">
+                                        <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Type</label>
                                         <select
                                             value={recordType}
                                             onChange={(e) => setRecordType(e.target.value)}
@@ -456,7 +457,8 @@ const ZoneDetails = () => {
 
                                     {/* Name */}
                                     <div className="flex-1 sm:flex-none sm:w-40 md:w-48 relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-mono text-xs">@</span>
+                                        <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Name</label>
+                                        <span className="absolute left-3 top-[calc(50%+0.5rem)] -translate-y-1/2 text-gray-500 font-mono text-xs">@</span>
                                         <input
                                             type="text"
                                             value={recordName === '@' ? '' : recordName}
@@ -468,6 +470,7 @@ const ZoneDetails = () => {
 
                                     {/* TTL - Moved to same row on mobile */}
                                     <div className="w-full sm:w-24 md:w-32">
+                                        <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">TTL</label>
                                         <select
                                             value={recordTTL}
                                             onChange={(e) => setRecordTTL(e.target.value)}
@@ -489,6 +492,7 @@ const ZoneDetails = () => {
                                     {/* MX Priority Field - Only show for MX records */}
                                     {recordType === 'MX' && (
                                         <div className="w-24">
+                                            <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Priority</label>
                                             <input
                                                 type="number"
                                                 value={mxPriority}
@@ -502,6 +506,7 @@ const ZoneDetails = () => {
                                         </div>
                                     )}
                                     <div className="flex-1 relative">
+                                        <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Content</label>
                                         <input
                                             type="text"
                                             value={recordContent}
