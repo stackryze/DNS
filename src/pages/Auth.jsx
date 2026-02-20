@@ -30,6 +30,29 @@ const Auth = () => {
     const [otp, setOtp] = useState("");
     const [turnstileToken, setTurnstileToken] = useState("");
 
+    // Handle GitHub OAuth callback
+    useEffect(() => {
+        if (location.pathname === '/auth/callback') {
+            const params = new URLSearchParams(location.search);
+            const token = params.get('token');
+            const error = params.get('error');
+
+            if (token) {
+                localStorage.setItem('token', token);
+                navigate('/dashboard');
+            } else if (error) {
+                const errorMessages = {
+                    'no_account': 'No account found. Please create an account first using email and password.',
+                    'not_verified': 'Please verify your account with the OTP sent to your email before using GitHub signin.',
+                    'no_verified_email': 'No verified email found on your GitHub account. Please verify your email on GitHub first.',
+                    'github_auth_failed': 'GitHub authentication failed. Please try again.'
+                };
+                setError(errorMessages[error] || 'Authentication failed. Please try again.');
+                navigate('/login', { replace: true });
+            }
+        }
+    }, [location, navigate]);
+
     useEffect(() => {
         setIsLogin(location.pathname === '/login');
         setStep(1);
@@ -200,7 +223,10 @@ const Auth = () => {
 
                 {/* LOGIN Only: GitHub Button (Hidden in Forgot Mode) */}
                 {isLogin && !forgotMode && (
-                    <button className="w-full bg-[#24292e] hover:bg-[#2f363d] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-3 transition-all border border-white/10 hover:border-white/20 mb-6 font-mono text-sm group">
+                    <button 
+                        onClick={() => window.location.href = `${import.meta.env.VITE_API_URL}/auth/github`}
+                        className="w-full bg-[#24292e] hover:bg-[#2f363d] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-3 transition-all border border-white/10 hover:border-white/20 mb-6 font-mono text-sm group"
+                    >
                         <Github className="w-5 h-5 group-hover:scale-110 transition-transform" /> Sign in with GitHub
                     </button>
                 )}

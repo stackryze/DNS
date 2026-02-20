@@ -23,6 +23,7 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Auth />} />
         <Route path="/signup" element={<Auth />} />
+        <Route path="/auth/callback" element={<Auth />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/aup" element={<AUP />} />
         <Route path="/privacy" element={<Privacy />} />
