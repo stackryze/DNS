@@ -4,6 +4,25 @@ import { Github, Mail, Lock, User, ArrowRight, Loader2, KeyRound, Eye, EyeOff, X
 import { Turnstile } from '@marsidev/react-turnstile';
 import api from '../services/api';
 
+// Allowed email domains
+const ALLOWED_EMAIL_DOMAINS = [
+    'gmail.com',
+    'outlook.com',
+    'hotmail.com',
+    'live.com',
+    'yahoo.com',
+    'icloud.com',
+    'proton.me',
+    'protonmail.com',
+    'zoho.com'
+];
+
+const isAllowedEmailProvider = (email) => {
+    if (!email || !email.includes('@')) return false;
+    const domain = email.toLowerCase().split('@')[1];
+    return ALLOWED_EMAIL_DOMAINS.includes(domain);
+};
+
 const Auth = () => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -17,6 +36,7 @@ const Auth = () => {
     const [step, setStep] = useState(1); // 1: Details, 2: OTP
     const [error, setError] = useState("");
     const [message, setMessage] = useState(""); // Success messages
+    const [emailError, setEmailError] = useState("");
 
     // Forgot Password Mode
     const [forgotMode, setForgotMode] = useState(false);
@@ -63,7 +83,22 @@ const Auth = () => {
         setPassword("");
         setForgotMode(false);
         setResetStep(1);
+        setEmailError("");
     }, [location.pathname]);
+
+    // Email validation effect
+    useEffect(() => {
+        if (!email || !email.includes('@')) {
+            setEmailError("");
+            return;
+        }
+
+        if (!isAllowedEmailProvider(email)) {
+            setEmailError("We currently allow only popular email providers to prevent spam and fake accounts. Please use Gmail, Outlook, Yahoo, iCloud, Proton, or Zoho.");
+        } else {
+            setEmailError("");
+        }
+    }, [email]);
 
     // Validation
     const validatePassword = (pass) => {
@@ -107,6 +142,10 @@ const Auth = () => {
             return;
         }
 
+        if (emailError) {
+            setError(emailError);
+            return;
+        }
 
         if (enableTurnstile && !turnstileToken) {
             setError("Please complete the security check");
@@ -321,7 +360,7 @@ const Auth = () => {
                         {!isLogin && step === 1 && (
                             <form onSubmit={handleSignupStep1} className="space-y-4">
                                 <InputGroup label="Full Name" icon={User} type="text" value={name} onChange={setName} placeholder="John Doe" />
-                                <InputGroup label="Email" icon={Mail} type="email" value={email} onChange={setEmail} placeholder="name@company.com" />
+                                <InputGroup label="Email" icon={Mail} type="email" value={email} onChange={setEmail} placeholder="name@company.com" error={emailError} />
                                 <InputGroup label="Password" icon={Lock} type="password" value={password} onChange={setPassword} placeholder="••••••••" />
 
                                 {password && (
@@ -392,7 +431,7 @@ const ValidationItem = ({ passed, text }) => (
     </div>
 );
 
-const InputGroup = ({ label, icon: Icon, type, value, onChange, placeholder }) => {
+const InputGroup = ({ label, icon: Icon, type, value, onChange, placeholder, error }) => {
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = type === 'password';
     const inputType = isPassword ? (showPassword ? 'text' : 'password') : type;
@@ -407,7 +446,11 @@ const InputGroup = ({ label, icon: Icon, type, value, onChange, placeholder }) =
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
-                    className="w-full bg-[#1A1A1A] border border-[#333] text-white rounded-xl py-2.5 pl-10 pr-10 focus:outline-none focus:border-[#38BDF8] focus:ring-1 focus:ring-[#38BDF8] transition-all placeholder-[#444]"
+                    className={`w-full bg-[#1A1A1A] border rounded-xl py-2.5 pl-10 pr-10 focus:outline-none focus:ring-1 transition-all placeholder-[#444] text-white ${
+                        error 
+                            ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                            : 'border-[#333] focus:border-[#38BDF8] focus:ring-[#38BDF8]'
+                    }`}
                     required
                 />
                 {isPassword && (
@@ -420,6 +463,7 @@ const InputGroup = ({ label, icon: Icon, type, value, onChange, placeholder }) =
                     </button>
                 )}
             </div>
+            {error && <p className="text-xs text-red-400 mt-1 ml-1">{error}</p>}
         </div>
     );
 };
