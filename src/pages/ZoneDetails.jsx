@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getZoneDetails, getZoneRecords, addRecord, deleteRecord, deleteZone, verifyZone, exportZone } from '../services/api';
-import { ArrowLeft, Plus, Trash2, Globe, AlertCircle, Loader2, Copy, ShieldCheck, AlertTriangle, MoreHorizontal, Check, X, RotateCw, Download } from 'lucide-react';
+import { getZoneDetails, getZoneRecords, addRecord, deleteRecord, deleteZone, verifyZone, verifyOwnership, exportZone } from '../services/api';
+import { ArrowLeft, Plus, Trash2, Globe, AlertCircle, Loader2, Copy, ShieldCheck, AlertTriangle, MoreHorizontal, Check, X, RotateCw, Download, KeyRound } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import debounce from 'lodash.debounce';
 import { useToast } from '../components/Toast';
@@ -50,6 +50,11 @@ const ZoneDetails = () => {
     const [verifying, setVerifying] = useState(false);
     const [verificationError, setVerificationError] = useState(null);
     const [verificationDetails, setVerificationDetails] = useState(null);
+
+    // Ownership Verification State
+    const [verifyingOwnership, setVerifyingOwnership] = useState(false);
+    const [ownershipError, setOwnershipError] = useState(null);
+    const [codeCopied, setCodeCopied] = useState(false);
 
     // New Record State
     const [recordType, setRecordType] = useState('A');
@@ -135,6 +140,31 @@ const ZoneDetails = () => {
         } catch (err) {
             toast.error('Failed to export zone: ' + (err.response?.data?.error || err.message));
         }
+    };
+
+    const handleVerifyOwnership = async () => {
+        setVerifyingOwnership(true);
+        setOwnershipError(null);
+        try {
+            await verifyOwnership(id);
+            toast.success('Ownership verified successfully!');
+            fetchZoneMetadata();
+        } catch (err) {
+            const msg = err.response?.data?.error || err.message;
+            setOwnershipError(msg);
+            if (err.response?.data?.hint) {
+                setOwnershipError(msg + ' ' + err.response.data.hint);
+            }
+        } finally {
+            setVerifyingOwnership(false);
+        }
+    };
+
+    const handleCopyCode = (code) => {
+        navigator.clipboard.writeText(code);
+        setCodeCopied(true);
+        toast.success('Verification code copied!');
+        setTimeout(() => setCodeCopied(false), 2000);
     };
 
     const handleAddRecord = async (e) => {
@@ -267,6 +297,8 @@ const ZoneDetails = () => {
     if (!zone) return <div className="text-white text-center mt-20">Zone not found</div>;
 
     const isPending = zone.status === 'pending_verification' || zone.status === 'pending';
+    const isPendingOwnership = zone.status === 'pending_ownership';
+    const isBlocked = isPending || isPendingOwnership;
 
     return (
         <>
@@ -290,9 +322,11 @@ const ZoneDetails = () => {
                             <span className="truncate">{zone.name}</span>
                             <span className={`text-[9px] md:text-[11px] px-2 md:px-2.5 py-0.5 md:py-1 rounded-md uppercase tracking-wider font-bold shadow-sm whitespace-nowrap ${zone.status === 'active'
                                 ? 'bg-[#10B981] text-black'
+                                : zone.status === 'pending_ownership'
+                                ? 'bg-[#F59E0B] text-black'
                                 : 'bg-[#F48120] text-black'
                                 }`}>
-                                {zone.status === 'pending_verification' ? 'Pending' : zone.status}
+                                {zone.status === 'pending_verification' ? 'Pending' : zone.status === 'pending_ownership' ? 'Verify Ownership' : zone.status}
                             </span>
                         </h1>
                     </div>
@@ -318,6 +352,73 @@ const ZoneDetails = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Ownership Verification Banner (Platform Subdomains) */}
+            <AnimatePresence>
+                {isPendingOwnership && zone.ownershipCode && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="bg-black/60 backdrop-blur-xl border border-white/10 border-l-4 border-l-[#F59E0B] p-6 rounded-r-lg shadow-2xl relative z-10 mt-6 backdrop-brightness-75"
+                    >
+                        <div className="flex flex-col gap-6">
+                            <div className="space-y-4 w-full">
+                                <div>
+                                    <h3 className="text-[#F59E0B] font-bold text-base flex items-center gap-2 mb-2">
+                                        <KeyRound className="w-5 h-5" />
+                                        Ownership Verification Required
+                                    </h3>
+                                    <p className="text-gray-300 text-sm max-w-2xl leading-relaxed">
+                                        <span className="font-semibold text-white">{zone.name}</span> is a platform subdomain.
+                                        To prove you own this domain, copy the code below and add it on the <a href="https://domain.stackryze.com/my-domains" target="_blank" rel="noopener noreferrer" className="text-[#38BDF8] hover:underline font-semibold">Domains platform</a>.
+                                    </p>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <h4 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Your Verification Code</h4>
+                                    <div
+                                        onClick={() => handleCopyCode(zone.ownershipCode)}
+                                        className="flex items-center justify-between bg-[#F59E0B]/10 px-4 py-3 rounded-lg text-sm font-mono text-[#F59E0B] border border-[#F59E0B]/30 group cursor-pointer hover:bg-[#F59E0B]/20 transition-colors"
+                                    >
+                                        <span className="break-all">{zone.ownershipCode}</span>
+                                        {codeCopied ? (
+                                            <Check className="w-4 h-4 ml-3 flex-shrink-0 text-[#10B981]" />
+                                        ) : (
+                                            <Copy className="w-4 h-4 ml-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                                    <h4 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-3">Steps to Verify</h4>
+                                    <ol className="text-sm text-gray-300 space-y-2 list-decimal list-inside">
+                                        <li>Copy the verification code above</li>
+                                        <li>Go to <a href="https://domain.stackryze.com/my-domains" target="_blank" rel="noopener noreferrer" className="text-[#38BDF8] hover:underline">domain.stackryze.com</a></li>
+                                        <li>Open your domain <span className="text-white font-semibold">{zone.name}</span> → Manage</li>
+                                        <li>Click <span className="text-[#F59E0B] font-semibold">DNS Verification</span> and paste the code</li>
+                                        <li>Come back here and click <span className="text-[#F59E0B] font-semibold">Verify Ownership</span></li>
+                                    </ol>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={handleVerifyOwnership}
+                                disabled={verifyingOwnership}
+                                className="bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-black px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap shadow-lg shadow-amber-900/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] self-start"
+                            >
+                                {verifyingOwnership ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+                                {verifyingOwnership ? 'Verifying...' : 'Verify Ownership'}
+                            </button>
+                        </div>
+                        {ownershipError && (
+                            <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-sm flex items-start gap-2">
+                                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                                <span>{ownershipError}</span>
+                            </div>
+                        )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Verification Banner */}
             <AnimatePresence>
@@ -393,7 +494,7 @@ const ZoneDetails = () => {
             </AnimatePresence>
 
             {/* DNS Records Section */}
-            <div className={`space-y-4 ${isPending ? 'opacity-70 pointer-events-none grayscale-[0.5]' : ''}`}>
+            <div className={`space-y-4 ${isBlocked ? 'opacity-70 pointer-events-none grayscale-[0.5]' : ''}`}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-0 pt-4">
                     <div>
                         <h2 className="text-lg md:text-xl font-bold text-white tracking-tight flex items-center gap-2">

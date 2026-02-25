@@ -78,6 +78,11 @@ export const verifyZone = async (id) => {
     return response.data;
 };
 
+export const verifyOwnership = async (id) => {
+    const response = await api.post(`/zones/${id}/verify-ownership`);
+    return response.data;
+};
+
 export const exportZone = async (id, zoneName) => {
     const response = await api.get(`/zones/${id}/export`, {
         responseType: 'blob'
