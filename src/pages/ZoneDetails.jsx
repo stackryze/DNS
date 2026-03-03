@@ -20,6 +20,8 @@ const RecordBadge = ({ type }) => {
         CNAME: 'bg-[#0F2D1F] text-[#4CC495] border-[#16432E]',
         TXT: 'bg-[#2B2B2B] text-[#A6A6A6] border-[#404040]',
         MX: 'bg-[#451E11] text-[#F99B7D] border-[#662C19]',
+        SRV: 'bg-[#1E3A8A] text-[#93C5FD] border-[#1D4ED8]',
+        CAA: 'bg-[#065F46] text-[#6EE7B7] border-[#047857]',
         NS: 'bg-[#2B2B2B] text-[#E0E0E0] border-[#404040]',
         SOA: 'bg-[#1A1A1A] text-[#808080] border-[#333]'
     };
@@ -61,6 +63,11 @@ const ZoneDetails = () => {
     const [recordName, setRecordName] = useState('@');
     const [recordContent, setRecordContent] = useState('');
     const [mxPriority, setMxPriority] = useState('10'); // Default MX priority
+    const [srvPriority, setSrvPriority] = useState('10');
+    const [srvWeight, setSrvWeight] = useState('5');
+    const [srvPort, setSrvPort] = useState('443');
+    const [caaFlags, setCaaFlags] = useState('0');
+    const [caaTag, setCaaTag] = useState('issue');
     const [recordTTL, setRecordTTL] = useState(3600); // Default: 1 hour (minimum allowed)
     const [adding, setAdding] = useState(false);
     const [deleting, setDeleting] = useState(null); // ID or name of record being deleted
@@ -207,14 +214,48 @@ const ZoneDetails = () => {
                 toast.error('MX priority must be a number between 0 and 65535');
                 return;
             }
+        } else if (recordType === 'SRV') {
+            const priority = parseInt(srvPriority);
+            const weight = parseInt(srvWeight);
+            const port = parseInt(srvPort);
+
+            if (isNaN(priority) || priority < 0 || priority > 65535) {
+                toast.error('SRV priority must be a number between 0 and 65535');
+                return;
+            }
+
+            if (isNaN(weight) || weight < 0 || weight > 65535) {
+                toast.error('SRV weight must be a number between 0 and 65535');
+                return;
+            }
+
+            if (isNaN(port) || port < 1 || port > 65535) {
+                toast.error('SRV port must be a number between 1 and 65535');
+                return;
+            }
+        } else if (recordType === 'CAA') {
+            const flags = parseInt(caaFlags);
+            if (isNaN(flags) || flags < 0 || flags > 255) {
+                toast.error('CAA flags must be a number between 0 and 255');
+                return;
+            }
+            if (!['issue', 'issuewild', 'iodef'].includes(caaTag)) {
+                toast.error('CAA tag must be issue, issuewild, or iodef');
+                return;
+            }
         }
 
         setAdding(true);
         try {
             // For MX records, combine priority with content
-            const finalContent = recordType === 'MX' 
-                ? `${mxPriority} ${recordContent}`
-                : recordContent;
+            const finalContent =
+                recordType === 'MX'
+                    ? `${mxPriority} ${recordContent}`
+                    : recordType === 'SRV'
+                    ? `${srvPriority} ${srvWeight} ${srvPort} ${recordContent}`
+                    : recordType === 'CAA'
+                    ? `${caaFlags} ${caaTag} "${recordContent}"`
+                    : recordContent;
 
             await addRecord(id, {
                 type: recordType,
@@ -226,6 +267,11 @@ const ZoneDetails = () => {
             setRecordName('@');
             setRecordContent('');
             setMxPriority('10');
+            setSrvPriority('10');
+            setSrvWeight('5');
+            setSrvPort('443');
+            setCaaFlags('0');
+            setCaaTag('issue');
             setIsAddMode(false);
 
             toast.success(`${recordType} record added successfully`);
@@ -612,7 +658,7 @@ const ZoneDetails = () => {
                                             onChange={(e) => setRecordType(e.target.value)}
                                             className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white font-bold focus:border-[#38BDF8] focus:outline-none transition-colors cursor-pointer"
                                         >
-                                            {['A', 'AAAA', 'CNAME', 'TXT', 'MX'].map(t => <option key={t} value={t}>{t}</option>)}
+                                            {['A', 'AAAA', 'CNAME', 'TXT', 'MX', 'SRV', 'CAA'].map(t => <option key={t} value={t}>{t}</option>)}
                                         </select>
                                     </div>
 
@@ -666,8 +712,82 @@ const ZoneDetails = () => {
                                             />
                                         </div>
                                     )}
+                                    {/* SRV Fields - Priority, Weight, Port */}
+                                    {recordType === 'SRV' && (
+                                        <>
+                                            <div className="w-24">
+                                                <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Priority</label>
+                                                <input
+                                                    type="number"
+                                                    value={srvPriority}
+                                                    onChange={(e) => setSrvPriority(e.target.value)}
+                                                    placeholder="10"
+                                                    min="0"
+                                                    max="65535"
+                                                    className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none font-mono transition-colors"
+                                                    title="Priority (0-65535)"
+                                                />
+                                            </div>
+                                            <div className="w-24">
+                                                <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Weight</label>
+                                                <input
+                                                    type="number"
+                                                    value={srvWeight}
+                                                    onChange={(e) => setSrvWeight(e.target.value)}
+                                                    placeholder="5"
+                                                    min="0"
+                                                    max="65535"
+                                                    className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none font-mono transition-colors"
+                                                    title="Weight (0-65535)"
+                                                />
+                                            </div>
+                                            <div className="w-24">
+                                                <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Port</label>
+                                                <input
+                                                    type="number"
+                                                    value={srvPort}
+                                                    onChange={(e) => setSrvPort(e.target.value)}
+                                                    placeholder="443"
+                                                    min="1"
+                                                    max="65535"
+                                                    className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none font-mono transition-colors"
+                                                    title="Port (1-65535)"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+                                    {/* CAA Fields - Flags, Tag */}
+                                    {recordType === 'CAA' && (
+                                        <>
+                                            <div className="w-20">
+                                                <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Flags</label>
+                                                <input
+                                                    type="number"
+                                                    value={caaFlags}
+                                                    onChange={(e) => setCaaFlags(e.target.value)}
+                                                    placeholder="0"
+                                                    min="0"
+                                                    max="255"
+                                                    className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none font-mono transition-colors"
+                                                    title="Flags (0-255, usually 0)"
+                                                />
+                                            </div>
+                                            <div className="w-28">
+                                                <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Tag</label>
+                                                <select
+                                                    value={caaTag}
+                                                    onChange={(e) => setCaaTag(e.target.value)}
+                                                    className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none transition-colors cursor-pointer"
+                                                >
+                                                    <option value="issue">issue</option>
+                                                    <option value="issuewild">issuewild</option>
+                                                    <option value="iodef">iodef</option>
+                                                </select>
+                                            </div>
+                                        </>
+                                    )}
                                     <div className="flex-1 relative">
-                                        <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Content</label>
+                                        <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">{recordType === 'CAA' ? 'Value' : 'Content'}</label>
                                         <input
                                             type="text"
                                             value={recordContent}
@@ -677,6 +797,8 @@ const ZoneDetails = () => {
                                                 recordType === 'AAAA' ? '2001:db8::1' :
                                                 recordType === 'CNAME' ? 'example.com' :
                                                 recordType === 'MX' ? 'mail.example.com' :
+                                                recordType === 'SRV' ? 'target.example.com' :
+                                                recordType === 'CAA' ? 'letsencrypt.org' :
                                                 recordType === 'TXT' ? 'v=spf1 include:_spf.example.com ~all' :
                                                 'content'
                                             }
