@@ -248,6 +248,10 @@ const ZoneDetails = () => {
         setAdding(true);
         try {
             // For MX records, combine priority with content
+            // For TXT records, auto-wrap in quotes if not already quoted
+            const txtContent = recordType === 'TXT' && !recordContent.startsWith('"')
+                ? `"${recordContent}"`
+                : recordContent;
             const finalContent =
                 recordType === 'MX'
                     ? `${mxPriority} ${recordContent}`
@@ -255,6 +259,8 @@ const ZoneDetails = () => {
                     ? `${srvPriority} ${srvWeight} ${srvPort} ${recordContent}`
                     : recordType === 'CAA'
                     ? `${caaFlags} ${caaTag} "${recordContent}"`
+                    : recordType === 'TXT'
+                    ? txtContent
                     : recordContent;
 
             await addRecord(id, {
