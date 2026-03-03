@@ -536,8 +536,12 @@ const ZoneDetails = () => {
                                         <h4 className="text-white font-semibold text-sm">Think this is an error?</h4>
                                         <p className="text-gray-400 text-xs mt-1">
                                             If you believe your domain was suspended in error, please contact our support team at{' '}
-                                            <a href="mailto:appeals@stackryze.com" className="text-[#38BDF8] hover:underline font-semibold">
-                                                appeals@stackryze.com
+                                            <a href="mailto:support@stackryze.com" className="text-[#38BDF8] hover:underline font-semibold">
+                                                support@stackryze.com
+                                            </a>
+                                            {' '}or join our{' '}
+                                            <a href="https://discord.gg/wr7s97cfM7" target="_blank" rel="noopener noreferrer" className="text-[#5865F2] hover:underline font-semibold">
+                                                Discord server
                                             </a>
                                             {' '}with your domain name and account details. We'll review your case as soon as possible.
                                         </p>
