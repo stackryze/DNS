@@ -298,7 +298,8 @@ const ZoneDetails = () => {
 
     const isPending = zone.status === 'pending_verification' || zone.status === 'pending';
     const isPendingOwnership = zone.status === 'pending_ownership';
-    const isBlocked = isPending || isPendingOwnership;
+    const isSuspended = zone.status === 'suspended';
+    const isBlocked = isPending || isPendingOwnership || isSuspended;
 
     return (
         <>
@@ -324,9 +325,11 @@ const ZoneDetails = () => {
                                 ? 'bg-[#10B981] text-black'
                                 : zone.status === 'pending_ownership'
                                 ? 'bg-[#F59E0B] text-black'
+                                : zone.status === 'suspended'
+                                ? 'bg-red-500 text-white'
                                 : 'bg-[#F48120] text-black'
                                 }`}>
-                                {zone.status === 'pending_verification' ? 'Pending' : zone.status === 'pending_ownership' ? 'Verify Ownership' : zone.status}
+                                {zone.status === 'pending_verification' ? 'Pending' : zone.status === 'pending_ownership' ? 'Verify Ownership' : zone.status === 'suspended' ? 'Suspended' : zone.status}
                             </span>
                         </h1>
                     </div>
