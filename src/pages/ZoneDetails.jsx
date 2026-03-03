@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getZoneDetails, getZoneRecords, addRecord, deleteRecord, deleteZone, verifyZone, verifyOwnership, exportZone } from '../services/api';
-import { ArrowLeft, Plus, Trash2, Globe, AlertCircle, Loader2, Copy, ShieldCheck, AlertTriangle, MoreHorizontal, Check, X, RotateCw, Download, KeyRound } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Globe, AlertCircle, Loader2, Copy, ShieldCheck, AlertTriangle, MoreHorizontal, Check, X, RotateCw, Download, KeyRound, ShieldOff, Mail } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import debounce from 'lodash.debounce';
 import { useToast } from '../components/Toast';
@@ -492,6 +492,59 @@ const ZoneDetails = () => {
                                 {verificationError}
                             </div>
                         )}
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Suspended Zone Banner */}
+            <AnimatePresence>
+                {isSuspended && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="bg-black/60 backdrop-blur-xl border border-white/10 border-l-4 border-l-red-500 p-6 rounded-r-lg shadow-2xl relative z-10 mt-6 backdrop-brightness-75"
+                    >
+                        <div className="flex flex-col gap-4">
+                            <div className="space-y-3">
+                                <h3 className="text-red-400 font-bold text-base flex items-center gap-2">
+                                    <ShieldOff className="w-5 h-5" />
+                                    Domain Suspended
+                                </h3>
+                                <p className="text-gray-300 text-sm leading-relaxed">
+                                    <span className="font-semibold text-white">{zone.name}</span> has been suspended by an administrator.
+                                    This domain is currently <span className="text-red-400 font-semibold">not resolving</span> and all DNS queries will fail.
+                                </p>
+                            </div>
+
+                            <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
+                                <div className="flex items-start gap-3">
+                                    <ShieldCheck className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <h4 className="text-white font-semibold text-sm">Your DNS Records are Safe</h4>
+                                        <p className="text-gray-400 text-xs mt-1">
+                                            All your DNS records have been securely backed up. Once the suspension is lifted, 
+                                            your records will be automatically restored exactly as they were.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                                <div className="flex items-start gap-3">
+                                    <Mail className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <h4 className="text-white font-semibold text-sm">Think this is an error?</h4>
+                                        <p className="text-gray-400 text-xs mt-1">
+                                            If you believe your domain was suspended in error, please contact our support team at{' '}
+                                            <a href="mailto:appeals@stackryze.com" className="text-[#38BDF8] hover:underline font-semibold">
+                                                appeals@stackryze.com
+                                            </a>
+                                            {' '}with your domain name and account details. We'll review your case as soon as possible.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getZones, createZone } from '../services/api';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Globe, Activity, ArrowRight, Loader2, Search, Zap, Server, ShieldCheck } from 'lucide-react';
+import { Plus, Globe, Activity, ArrowRight, Loader2, Search, Zap, Server, ShieldCheck, ShieldOff } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useToast } from '../components/Toast';
 
@@ -101,8 +101,9 @@ const Dashboard = () => {
                 {/* Quick Stats Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
                     <StatCard icon={Server} label="Total Zones" value={`${zones.length}/${limits.zoneLimit}`} color="bg-blue-500/20 text-blue-400" border="border-blue-500/20" subtitle={limits.remainingZones > 0 ? `${limits.remainingZones} remaining` : 'Limit reached'} />
-                    <StatCard icon={Zap} label="Unverified" value={zones.filter(z => z.status === 'pending').length} color="bg-pink-500/20 text-pink-400" border="border-pink-500/20" />
+                    <StatCard icon={Zap} label="Unverified" value={zones.filter(z => z.status === 'pending' || z.status === 'pending_verification' || z.status === 'pending_ownership').length} color="bg-pink-500/20 text-pink-400" border="border-pink-500/20" />
                     <StatCard icon={ShieldCheck} label="Active" value={zones.filter(z => z.status === 'active').length} color="bg-emerald-500/20 text-emerald-400" border="border-emerald-500/20" />
+                    <StatCard icon={ShieldOff} label="Suspended" value={zones.filter(z => z.status === 'suspended').length} color="bg-red-500/20 text-red-400" border="border-red-500/20" />
                 </div>
             </div>
 
@@ -140,10 +141,21 @@ const Dashboard = () => {
                                                             <Server className="w-3 h-3" />
                                                             {zone.records_count || 0} Records
                                                         </span>
-                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded border ${zone.status === 'active' ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400' : 'bg-orange-500/5 border-orange-500/10 text-orange-400'
+                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded border ${
+                                                            zone.status === 'active' 
+                                                                ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400' 
+                                                                : zone.status === 'suspended' 
+                                                                    ? 'bg-red-500/5 border-red-500/10 text-red-400'
+                                                                    : 'bg-orange-500/5 border-orange-500/10 text-orange-400'
                                                             }`}>
-                                                            <div className={`w-1.5 h-1.5 rounded-full ${zone.status === 'active' ? 'bg-emerald-500' : 'bg-orange-500'}`} />
-                                                            {zone.status === 'pending_verification' ? 'Pending Setup' : zone.status}
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${
+                                                                zone.status === 'active' 
+                                                                    ? 'bg-emerald-500' 
+                                                                    : zone.status === 'suspended' 
+                                                                        ? 'bg-red-500'
+                                                                        : 'bg-orange-500'
+                                                            }`} />
+                                                            {zone.status === 'pending_verification' ? 'Pending Setup' : zone.status === 'suspended' ? 'Suspended' : zone.status}
                                                         </div>
                                                     </div>
 
