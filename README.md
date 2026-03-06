@@ -42,15 +42,19 @@
 
 <div align="center">
 
-<img src="https://github.com/stackryze/FreeDomains/raw/bfd23beb609ad5ea490697cf79238ad43ba363a2/public/Cloudflare_Logo.png" alt="Cloudflare" height="40" />
-&nbsp;&nbsp;&nbsp;
-<img src="https://ca.insight.com/content/dam/insight-web/logos/partner-logos/white/branded-search/1password.png" alt="1Password" height="48" />
-&nbsp;&nbsp;&nbsp;
-<img src="https://github.com/stackryze/FreeDomains/raw/bfd23beb609ad5ea490697cf79238ad43ba363a2/public/hetrixtools.png" alt="Hetrix Tools" height="40" />
+  <img src="https://raw.githubusercontent.com/stackryze/FreeDomains/main/public/Cloudflare_Logo.png" alt="Cloudflare" height="38" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://companieslogo.com/img/orig/DOCN_BIG.D-a2c943bc.png" alt="Digital Ocean" height="40" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://raw.githubusercontent.com/stackryze/FreeDomains/main/public/hetrixtools.png" alt="HetrixTools" height="38" />
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <img src="https://ca.insight.com/content/dam/insight-web/logos/partner-logos/white/branded-search/1password.png" alt="1Password" height="42" />
 
 </div>
 
-**Become a sponsor:** https://github.com/sponsors/sudheerbhuvana
+  **Become a sponsor:** https://github.com/sponsors/sudheerbhuvana
+
+
 
 ---
 
