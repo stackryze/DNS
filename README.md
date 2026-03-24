@@ -25,7 +25,7 @@
 
 ## 🌐 Nameservers
 
-- **ns1.stackryze.com** — `46.224.191.4` (Nuremberg, Germany)
+- **ns1.stackryze.com** — `165.227.92.220` (New York City, USA)
 - **ns2.stackryze.com** — `152.67.176.100` (Hyderabad, India)
 
 <div align="center">
