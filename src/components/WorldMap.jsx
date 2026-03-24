@@ -5,7 +5,7 @@ const WorldMap = () => {
     // Percentages relative to the map image
     // Calibrated based on user feedback (Germany adjusted, Hyderabad confirmed)
     const pins = [
-        { name: "ns1.stackryze.com (Germany)", top: "39.5%", left: "49%" },
+        { name: "ns1.stackryze.com (New York City, USA)", top: "45%", left: "29%" },
         { name: "ns2.stackryze.com (Hyderabad, India)", top: "57%", left: "66%" }
     ];
 
