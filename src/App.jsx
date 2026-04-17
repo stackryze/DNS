@@ -5,6 +5,7 @@ import ZoneDetails from './pages/ZoneDetails';
 import Landing from './pages/Landing';
 import Auth from './pages/Auth';
 import Settings from './pages/Settings';
+import Providers from './pages/Providers';
 import Terms from './pages/Terms';
 import AUP from './pages/AUP';
 import Privacy from './pages/Privacy';
@@ -36,6 +37,7 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/zones" element={<Dashboard />} />
               <Route path="/zones/:id" element={<ZoneDetails />} />
+              <Route path="/providers" element={<Providers />} />
               <Route path="/dns-checker" element={<DNSChecker />} />
               <Route path="/settings" element={<Settings />} />
               {/* Fallback to dashboard for unknown routes within layout? Or public 404? */}
