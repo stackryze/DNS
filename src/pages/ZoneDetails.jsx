@@ -291,15 +291,15 @@ const ZoneDetails = () => {
         }
     };
 
-    const handleDeleteRecord = async (rName, rType) => {
+    const handleDeleteRecord = async (rName, rType, rContent) => {
         setConfirmDialog({
             isOpen: true,
             title: 'Delete Record',
             message: `Are you sure you want to delete this ${rType} record?`,
             onConfirm: async () => {
-                setDeleting(`${rName}-${rType}`);
+                setDeleting(`${rName}-${rType}-${rContent}`);
                 try {
-                    await deleteRecord(id, rName, rType);
+                    await deleteRecord(id, rName, rType, rContent);
                     toast.success(`${rType} record deleted successfully`);
                     fetchRecords(searchQuery);
                 } catch (err) {
@@ -871,12 +871,12 @@ const ZoneDetails = () => {
                                                 <td className="px-3 md:px-6 py-2 md:py-3 text-right align-top">
                                                     {rrset.type !== 'SOA' && rrset.type !== 'NS' && (
                                                         <button
-                                                            onClick={() => handleDeleteRecord(rrset.name, rrset.type)}
-                                                            disabled={deleting === `${rrset.name}-${rrset.type}`}
+                                                            onClick={() => handleDeleteRecord(rrset.name, rrset.type, record.content)}
+                                                            disabled={deleting === `${rrset.name}-${rrset.type}-${record.content}`}
                                                             className="text-red-400 hover:text-red-500 p-2 hover:bg-red-500/10 rounded transition-all disabled:opacity-50"
                                                             title="Delete"
                                                         >
-                                                            {deleting === `${rrset.name}-${rrset.type}` ? (
+                                                            {deleting === `${rrset.name}-${rrset.type}-${record.content}` ? (
                                                                 <Loader2 className="w-4 h-4 animate-spin" />
                                                             ) : (
                                                                 <Trash2 className="w-4 h-4" />

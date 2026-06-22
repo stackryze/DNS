@@ -66,9 +66,9 @@ export const addRecord = async (zoneId, recordData) => {
     return response.data;
 };
 
-export const deleteRecord = async (zoneId, recordName, recordType) => {
+export const deleteRecord = async (zoneId, recordName, recordType, recordContent = null) => {
     const response = await api.delete(`/zones/${zoneId}/records`, {
-        data: { name: recordName, type: recordType }
+        data: { name: recordName, type: recordType, content: recordContent }
     });
     return response.data;
 };
