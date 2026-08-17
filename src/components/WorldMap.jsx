@@ -6,7 +6,8 @@ const WorldMap = () => {
     // Calibrated based on user feedback (Germany adjusted, Hyderabad confirmed)
     const pins = [
         { name: "ns1.stackryze.com (New York City, USA)", top: "45%", left: "29%" },
-        { name: "ns2.stackryze.com (Hyderabad, India)", top: "57%", left: "66%" }
+        { name: "ns2.stackryze.com (Frankfurt, Germany)", top: "39%", left: "49%" },
+        { name: "ns3.stackryze.com (Hyderabad, India)", top: "57%", left: "66%" }
     ];
 
     return (

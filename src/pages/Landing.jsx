@@ -20,7 +20,7 @@ const Landing = () => {
         }, 1000);
     };
 
-    const isLoggedIn = !!localStorage.getItem('token');
+    const isLoggedIn = !!localStorage.getItem('sr_auth');
 
     return (
         <div className="min-h-screen bg-[#1A1A1A] font-sans text-white selection:bg-[#38BDF8] selection:text-white">
