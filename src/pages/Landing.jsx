@@ -1,14 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Globe, Zap, Heart, CheckCircle, XCircle, Loader2, Code, Users, Play, LayoutDashboard } from 'lucide-react';
 import WorldMap from '../components/WorldMap';
 import StatsDisplay from '../components/StatsDisplay';
+import api from '../services/api';
 
 const Landing = () => {
     const navigate = useNavigate();
     const [domain, setDomain] = useState("");
     const [isChecking, setIsChecking] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('sr_auth'));
+
+    useEffect(() => {
+        api.get('/auth/me')
+            .then((res) => {
+                if (res.data && (res.data._id || res.data.id || res.data.email)) {
+                    localStorage.setItem('sr_auth', '1');
+                    setIsLoggedIn(true);
+                }
+            })
+            .catch(() => {
+                // Unauthenticated
+            });
+    }, []);
 
     // Mock check for now, or redirect to dashboard
     const handleCheck = () => {
@@ -19,8 +34,6 @@ const Landing = () => {
             navigate('/dashboard');
         }, 1000);
     };
-
-    const isLoggedIn = !!localStorage.getItem('sr_auth');
 
     return (
         <div className="min-h-screen bg-[#1A1A1A] font-sans text-white selection:bg-[#38BDF8] selection:text-white">

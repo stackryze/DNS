@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
+import api from '../services/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
@@ -20,6 +21,18 @@ const Auth = () => {
             }
             localStorage.setItem('sr_auth', '1');
             navigate('/dashboard', { replace: true });
+        } else {
+            // Auto-check if user is already logged in via ZITADEL session cookie
+            api.get('/auth/me')
+                .then((res) => {
+                    if (res.data && (res.data._id || res.data.id || res.data.email)) {
+                        localStorage.setItem('sr_auth', '1');
+                        navigate('/dashboard', { replace: true });
+                    }
+                })
+                .catch(() => {
+                    // Stay on login page if unauthenticated
+                });
         }
     }, [isCallback, location.search, navigate]);
 
