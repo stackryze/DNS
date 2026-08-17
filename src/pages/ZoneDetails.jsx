@@ -501,7 +501,7 @@ const ZoneDetails = () => {
                                     <div>
                                         <h4 className="text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Required Nameservers</h4>
                                         <div className="flex flex-col gap-2">
-                                            {['ns1.stackryze.com', 'ns2.stackryze.com'].map(ns => (
+                                            {['ns1.stackryze.com', 'ns2.stackryze.com', 'ns3.stackryze.com'].map(ns => (
                                                 <div key={ns} className="flex items-center justify-between bg-[#10B981]/10 px-3 py-2 rounded text-sm font-mono text-[#10B981] border border-[#10B981]/20 group cursor-pointer hover:bg-[#10B981]/20 transition-colors" onClick={() => navigator.clipboard.writeText(ns)}>
                                                     {ns}
                                                     <Copy className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100" />
