@@ -23,20 +23,15 @@ const Layout = ({ children }) => {
     const [user, setUser] = useState(null);
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            navigate('/login');
-            return;
-        }
-
-        // Fetch user data
+        // Session cookie is httpOnly, so verify auth via the backend.
         const fetchUser = async () => {
             try {
                 const response = await api.get('/auth/me');
                 setUser(response.data);
+                localStorage.setItem('sr_auth', '1');
             } catch (error) {
                 console.error('Failed to fetch user:', error);
-                localStorage.removeItem('token');
+                localStorage.removeItem('sr_auth');
                 navigate('/login');
             }
         };
@@ -45,8 +40,9 @@ const Layout = ({ children }) => {
     }, [navigate]);
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        navigate('/login');
+        localStorage.removeItem('sr_auth');
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+        window.location.href = `${API_URL}/auth/logout`;
     };
 
     return (
