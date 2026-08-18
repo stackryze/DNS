@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "rm -rf .wrangler/deploy && npx wrangler deploy"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.4.2",
