@@ -43,6 +43,14 @@ export const addRecord = async (zoneId, recordData) =>
 export const deleteRecord = async (zoneId, name, type, content = null) =>
   (await api.delete(`/zones/${zoneId}/records`, { data: { name, type, content } })).data;
 
+// Batch create/delete records in one request. -> { created, deleted, errors }
+export const batchRecords = async (zoneId, { create = [], delete: del = [] }) =>
+  (await api.post(`/zones/${zoneId}/records/batch`, { create, delete: del })).data;
+
+// Copy all records from one zone into another. -> { created, errors }
+export const cloneZone = async (zoneId, targetId) =>
+  (await api.post(`/zones/${zoneId}/clone`, { targetId })).data;
+
 export const deleteZone = async (id) => (await api.delete(`/zones/${id}`)).data;
 
 export const verifyZone = async (id) => (await api.post(`/zones/${id}/verify`)).data;
@@ -67,6 +75,31 @@ export const checkDnsRecord = async (domain, recordType) =>
 
 export const checkPropagation = async (domain) =>
   (await api.get(`/dns-checker/propagation/${domain}`)).data;
+
+// Scan a domain's current live records across common types (for import).
+export const scanDomain = async (domain, types = ['A', 'AAAA', 'CNAME', 'MX', 'TXT']) => {
+  const results = await Promise.all(
+    types.map(async (type) => {
+      try {
+        const data = await checkDnsRecord(domain, type);
+        return { type, data };
+      } catch {
+        return { type, data: null };
+      }
+    })
+  );
+  return results;
+};
+
+/* --------------------------- API Tokens ------------------------- */
+export const listTokens = async () => (await api.get('/tokens')).data;
+export const createToken = async (name, scopes) => (await api.post('/tokens', { name, scopes })).data;
+export const revokeToken = async (id) => (await api.delete(`/tokens/${id}`)).data;
+
+/* ---------------------------- Audit ----------------------------- */
+export const getAudit = async (limit = 50) => (await api.get('/audit', { params: { limit } })).data;
+export const getZoneAudit = async (zoneId, limit = 50) =>
+  (await api.get(`/audit/zone/${zoneId}`, { params: { limit } })).data;
 
 /* ---------------------------- Public ---------------------------- */
 export const getLiveStats = async () => (await api.get('/public/stats')).data;

@@ -3,6 +3,7 @@ import { User, Mail, Shield, Loader2, ExternalLink } from 'lucide-react';
 import { getMe } from '../services/api';
 import { Skeleton } from '../components/ui/skeleton';
 import { Button } from '../components/ui/button';
+import ApiTokens from '../components/settings/ApiTokens';
 
 export default function Settings() {
   const [user, setUser] = useState(null);
@@ -36,6 +37,8 @@ export default function Settings() {
           <a href="https://auth.stackryze.com" target="_blank" rel="noreferrer">Manage security <ExternalLink className="h-4 w-4" /></a>
         </Button>
       </section>
+
+      <ApiTokens />
     </div>
   );
 }
