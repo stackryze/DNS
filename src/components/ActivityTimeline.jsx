@@ -15,6 +15,8 @@ const ACTION_META = {
   'record.delete': { icon: Trash2, label: 'Deleted record', tone: 'text-destructive' },
   'records.batch': { icon: Layers, label: 'Batch update', tone: 'text-primary' },
   'change.revert': { icon: RotateCcw, label: 'Reverted a change', tone: 'text-warning' },
+  'dnssec.enable': { icon: Globe, label: 'Enabled DNSSEC', tone: 'text-success' },
+  'dnssec.disable': { icon: Globe, label: 'Disabled DNSSEC', tone: 'text-warning' },
 };
 
 const REVERTIBLE = new Set(['record.create', 'record.delete', 'records.batch']);

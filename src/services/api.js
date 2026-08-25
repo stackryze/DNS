@@ -122,6 +122,11 @@ export const scheduleChange = async (zoneId, payload) =>
 export const cancelSchedule = async (zoneId, sid) =>
   (await api.delete(`/zones/${zoneId}/schedule/${sid}`)).data;
 
+/* ----------------------------- DNSSEC --------------------------- */
+export const getDnssec = async (zoneId) => (await api.get(`/zones/${zoneId}/dnssec`)).data;
+export const enableDnssec = async (zoneId) => (await api.post(`/zones/${zoneId}/dnssec`)).data;
+export const disableDnssec = async (zoneId) => (await api.delete(`/zones/${zoneId}/dnssec`)).data;
+
 /* ---------------------------- Webhooks -------------------------- */
 export const listWebhooks = async () => (await api.get('/webhooks')).data;
 export const createWebhook = async (url, events) => (await api.post('/webhooks', { url, events })).data;
