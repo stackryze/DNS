@@ -115,7 +115,9 @@
 
   h1, h2, h3 {
     font-family: var(--font-display);
-    letter-spacing: -0.02em;
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
   }
 
   #root {
@@ -194,14 +196,15 @@
   mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 100%);
 }
 
-/* ---- Premium surface craft ---- */
+/* ---- Flat surface craft (ClickHouse-model: depth from contrast, not shadow) ---- */
 .panel {
   position: relative;
-  background:
-    linear-gradient(180deg, oklch(1 0 0 / 3.5%) 0%, oklch(1 0 0 / 0%) 40%),
-    var(--card);
+  background: var(--card);
   border: 1px solid var(--border);
-  box-shadow: inset 0 1px 0 0 oklch(1 0 0 / 6%), var(--shadow-elev-2);
+}
+.panel-soft {
+  background: color-mix(in oklch, var(--card) 55%, var(--background));
+  border: 1px solid var(--border);
 }
 .hairline-top { position: relative; }
 .hairline-top::before {
@@ -209,17 +212,13 @@
   position: absolute;
   inset: 0 0 auto 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 22%), transparent);
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / 14%), transparent);
 }
 .glow-ring {
-  box-shadow:
-    inset 0 1px 0 0 oklch(1 0 0 / 8%),
-    0 0 0 1px color-mix(in oklch, var(--primary) 18%, transparent),
-    0 20px 70px -30px color-mix(in oklch, var(--primary) 70%, transparent),
-    var(--shadow-elev-3);
+  border: 1px solid color-mix(in oklch, var(--primary) 30%, var(--border));
 }
 .text-fade {
-  background: linear-gradient(180deg, var(--foreground) 30%, color-mix(in oklch, var(--foreground) 55%, transparent) 100%);
+  background: linear-gradient(180deg, var(--foreground) 34%, color-mix(in oklch, var(--foreground) 52%, transparent) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -231,24 +230,18 @@
 }
 .animate-marquee { animation: marquee 40s linear infinite; }
 
-/* ---- Nested "double-bezel" architecture (machined-hardware depth) ----
-   Outer shell holds an inner core with concentric radii, like a glass
-   plate seated in an aluminium tray. Use: <div class="shell"><div class="core">…*/
+/* ---- Nested "double-bezel" architecture (flat, contrast-based) ----
+   Outer shell seats an inner core with concentric radii. */
 .shell {
-  border-radius: 1.75rem;
+  border-radius: 1.5rem;
   padding: 6px;
-  background: oklch(1 0 0 / 2.5%);
-  border: 1px solid oklch(1 0 0 / 7%);
-  box-shadow:
-    inset 0 1px 0 0 oklch(1 0 0 / 5%),
-    0 40px 90px -50px oklch(0 0 0 / 80%),
-    0 8px 30px -20px oklch(0 0 0 / 60%);
+  background: color-mix(in oklch, var(--card) 55%, var(--background));
+  border: 1px solid var(--border);
 }
 .core {
-  border-radius: 1.375rem;
+  border-radius: 1.125rem;
   background: var(--card);
-  border: 1px solid oklch(1 0 0 / 5%);
-  box-shadow: inset 0 1px 1px oklch(1 0 0 / 8%);
+  border: 1px solid var(--border);
 }
 
 /* Eyebrow micro-tag before large headings */

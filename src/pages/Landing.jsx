@@ -1,25 +1,25 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, Globe2, Boxes, Gauge, Code2, ShieldCheck, LayoutDashboard, Github, Terminal } from 'lucide-react';
+import { ArrowUpRight, Globe2, Boxes, Gauge, Code2, ShieldCheck, LayoutDashboard, Github } from 'lucide-react';
 import SiteHeader from '../components/SiteHeader';
 import SiteFooter from '../components/SiteFooter';
 import WorldMap from '../components/WorldMap';
 import StatsDisplay from '../components/StatsDisplay';
+import CountUp from '../components/CountUp';
+import { CodeWindow, K, C, V, M } from '../components/CodeWindow';
 
 const EASE = [0.16, 1, 0.3, 1];
 
-// Above-the-fold uses mount animation (visible immediately, then enhances);
-// below-the-fold uses scroll-triggered reveal.
-function Reveal({ children, delay = 0, className, mount = false }) {
+// Reveals always animate on mount so content is never invisible at rest.
+function Reveal({ children, delay = 0, className }) {
   const reduce = useReducedMotion();
-  const anim = { opacity: 1, y: 0 };
-  const init = reduce ? false : { opacity: 0, y: 24 };
+  if (reduce) return <div className={className}>{children}</div>;
   return (
     <motion.div
       className={className}
-      initial={init}
-      {...(mount ? { animate: anim } : { whileInView: anim, viewport: { once: true, amount: 0.25 } })}
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, delay, ease: EASE }}
     >
       {children}
@@ -88,11 +88,15 @@ export default function Landing() {
               </Reveal>
               <Reveal mount delay={0.24}>
                 <div className="mt-14 flex items-center gap-8">
-                  {[{ v: '3', l: 'Global regions' }, { v: '<30ms', l: 'Median latency' }, { v: '100%', l: 'Free forever' }].map((s, i) => (
+                  {[
+                    { node: <CountUp value={3} />, l: 'Global regions' },
+                    { node: <CountUp value={30} prefix="<" suffix="ms" />, l: 'Median latency' },
+                    { node: <CountUp value={100} suffix="%" />, l: 'Free forever' },
+                  ].map((s, i) => (
                     <React.Fragment key={s.l}>
                       {i > 0 && <span className="h-8 w-px bg-white/10" />}
                       <div>
-                        <div className="font-display text-2xl font-semibold tracking-tight text-primary">{s.v}</div>
+                        <div className="font-display text-[1.75rem] font-bold tracking-tight text-primary">{s.node}</div>
                         <div className="mt-0.5 text-xs text-muted-foreground">{s.l}</div>
                       </div>
                     </React.Fragment>
@@ -201,9 +205,16 @@ export default function Landing() {
                     <h3 className="mt-6 text-lg font-semibold">Developer REST API</h3>
                     <p className="mt-2 max-w-md text-sm text-muted-foreground">Automate zones and records with a standards-compliant JSON API.</p>
                   </div>
-                  <div className="w-full max-w-xs rounded-2xl border border-white/[0.07] bg-black/40 p-4 font-mono text-xs text-muted-foreground">
-                    <div className="flex items-center gap-2 text-muted-foreground/70"><Terminal className="h-3.5 w-3.5" strokeWidth={1.5} /> curl</div>
-                    <p className="mt-2 leading-relaxed"><span className="text-primary">POST</span> /api/zones/:id/records</p>
+                  <div className="w-full max-w-sm">
+                    <CodeWindow title="dig stackryze.com" lang="shell"
+                      stats={[{ label: 'query', value: 'A · 12ms' }, { label: 'status', value: 'NOERROR' }, { label: 'edge', value: 'FRA' }]}>
+                      <div><M>$</M> <K>dig</K> stackryze.com <K>+short</K></div>
+                      <div className="text-foreground">192.0.2.10</div>
+                      <div className="mt-2"><C>;; ANSWER SECTION:</C></div>
+                      <div><M>stackryze.com.</M> <M>300</M> <K>IN</K> <K>A</K> <span className="text-foreground">192.0.2.10</span></div>
+                      <div className="mt-1"><C>;; SERVER: ns1.stackryze.com</C></div>
+                      <div><V>;; resolved from edge · FRA · 12ms</V></div>
+                    </CodeWindow>
                   </div>
                 </article>
               </Reveal>
@@ -260,20 +271,21 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Final CTA */}
+        {/* Final CTA — full-bleed gold band (ClickHouse-style extreme contrast) */}
         <section className="border-t border-white/[0.06]">
-          <div className="container-custom py-32">
+          <div className="container-custom py-24">
             <Reveal>
-              <div className="shell">
-                <div className="core relative overflow-hidden px-8 py-20 text-center sm:px-16">
-                  <div className="pointer-events-none absolute inset-0 -z-10 bg-dots opacity-30" />
-                  <div className="pointer-events-none absolute left-1/2 top-full -z-10 h-80 w-[680px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-[130px]" />
-                  <h2 className="mx-auto max-w-2xl text-4xl font-semibold tracking-[-0.02em] sm:text-5xl">Point your first domain at Stackryze DNS.</h2>
-                  <p className="mx-auto mt-5 max-w-lg text-lg text-muted-foreground">Free, open, and ready when you are. Create a zone in under a minute.</p>
-                  <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-                    <CTA to="/login">Start for free</CTA>
-                    <CTA href="https://github.com/stackryze/DNS" tone="glass">View on GitHub</CTA>
-                  </div>
+              <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(160deg,var(--primary-bright),var(--primary))] px-8 py-20 text-center text-primary-foreground sm:px-16">
+                <h2 className="mx-auto max-w-2xl text-4xl font-bold tracking-[-0.03em] sm:text-5xl">Point your first domain at Stackryze DNS.</h2>
+                <p className="mx-auto mt-5 max-w-lg text-lg font-medium text-primary-foreground/80">Free, open, and ready when you are. Create a zone in under a minute.</p>
+                <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+                  <Link to="/login" className="group inline-flex items-center gap-3 rounded-full bg-[oklch(0.16_0.01_92)] py-1.5 pl-6 pr-1.5 text-[15px] font-semibold text-primary transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]">
+                    Start for free
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-[1px]"><ArrowUpRight className="h-4 w-4" strokeWidth={2} /></span>
+                  </Link>
+                  <a href="https://github.com/stackryze/DNS" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-black/15 px-6 py-3 text-[15px] font-semibold text-primary-foreground transition-colors hover:bg-black/5">
+                    <Github className="h-4 w-4" strokeWidth={2} /> View on GitHub
+                  </a>
                 </div>
               </div>
             </Reveal>
