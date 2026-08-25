@@ -1,13 +1,16 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight, Globe2, Boxes, Gauge, Code2, ShieldCheck, LayoutDashboard, Github } from 'lucide-react';
+import { ArrowUpRight, Globe2, Boxes, Code2, ShieldCheck, LayoutDashboard, Github } from 'lucide-react';
 import SiteHeader from '../components/SiteHeader';
 import SiteFooter from '../components/SiteFooter';
 import WorldMap from '../components/WorldMap';
 import StatsDisplay from '../components/StatsDisplay';
 import CountUp from '../components/CountUp';
 import { CodeWindow, K, C, V, M } from '../components/CodeWindow';
+import Capabilities from '../components/sections/Capabilities';
+import GlobalMap from '../components/sections/GlobalMap';
+import RecordTypes from '../components/sections/RecordTypes';
 
 const EASE = [0.16, 1, 0.3, 1];
 
@@ -144,6 +147,18 @@ export default function Landing() {
           </div>
         </section>
 
+        {/* Trusted-by resolver strip */}
+        <section>
+          <div className="container-custom pb-16">
+            <p className="mb-6 text-center font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Validated against every major resolver</p>
+            <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-70">
+              {['Google', 'Cloudflare', 'Quad9', 'OpenDNS', 'DNS.SB', 'AdGuard'].map((r) => (
+                <span key={r} className="font-display text-lg font-bold tracking-tight text-muted-foreground">{r}</span>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Features */}
         <section id="features" className="scroll-mt-28">
           <div className="container-custom py-32">
@@ -222,33 +237,14 @@ export default function Landing() {
           </div>
         </section>
 
-        {/* Network */}
-        <section id="network" className="scroll-mt-28 border-t border-white/[0.06]">
-          <div className="container-custom grid items-center gap-16 py-32 lg:grid-cols-2">
-            <Reveal>
-              <div className="shell"><div className="core overflow-hidden p-2"><WorldMap /></div></div>
-            </Reveal>
-            <Reveal delay={0.1}>
-              <div>
-                <span className="eyebrow"><Gauge className="h-3 w-3" strokeWidth={2} /> Low latency, worldwide</span>
-                <h2 className="mt-6 text-4xl font-semibold tracking-[-0.02em] sm:text-5xl">Strategically placed edge locations.</h2>
-                <p className="mt-5 max-w-md text-lg text-muted-foreground">Every query is answered from the nearest authoritative nameserver, keeping resolution fast and resilient no matter where your users are.</p>
-                <ul className="mt-9 divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/[0.07]">
-                  {POPS.map((pop) => (
-                    <li key={pop.code} className="flex items-center justify-between px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        <span className="h-2 w-2 rounded-full bg-success" />
-                        <span className="font-medium">{pop.city}</span>
-                        <span className="text-sm text-muted-foreground">{pop.region}</span>
-                      </div>
-                      <span className="font-mono text-sm text-muted-foreground">{pop.code}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </Reveal>
-          </div>
-        </section>
+        {/* Capabilities (tabbed) */}
+        <Capabilities />
+
+        {/* Record types grid */}
+        <RecordTypes />
+
+        {/* Global availability map */}
+        <GlobalMap />
 
         {/* Quickstart */}
         <section className="border-t border-white/[0.06]">
