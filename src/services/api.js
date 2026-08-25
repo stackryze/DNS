@@ -76,6 +76,10 @@ export const checkDnsRecord = async (domain, recordType) =>
 export const checkPropagation = async (domain) =>
   (await api.get(`/dns-checker/propagation/${domain}`)).data;
 
+// One-click diagnostics for a domain. -> { domain, checks: { dns, email, website } }
+export const diagnoseDomain = async (domain) =>
+  (await api.get(`/dns-checker/diagnose/${domain}`)).data;
+
 // Scan a domain's current live records across common types (for import).
 export const scanDomain = async (domain, types = ['A', 'AAAA', 'CNAME', 'MX', 'TXT']) => {
   const results = await Promise.all(
@@ -101,6 +105,27 @@ export const getAudit = async (limit = 50) => (await api.get('/audit', { params:
 export const getZoneAudit = async (zoneId, limit = 50) =>
   (await api.get(`/audit/zone/${zoneId}`, { params: { limit } })).data;
 export const revertAudit = async (auditId) => (await api.post(`/audit/${auditId}/revert`)).data;
+
+/* ------------------------ Record metadata ----------------------- */
+export const getRecordMeta = async (zoneId) => (await api.get(`/zones/${zoneId}/record-meta`)).data;
+export const setRecordMeta = async (zoneId, recordKey, comment, labels) =>
+  (await api.put(`/zones/${zoneId}/record-meta`, { recordKey, comment, labels })).data;
+
+/* ------------------------- Temporary records -------------------- */
+export const addTemporaryRecord = async (zoneId, payload) =>
+  (await api.post(`/zones/${zoneId}/records/temporary`, payload)).data; // { type,name,content,ttl,expiresInMinutes }
+
+/* ------------------------- Scheduled changes -------------------- */
+export const getSchedule = async (zoneId) => (await api.get(`/zones/${zoneId}/schedule`)).data;
+export const scheduleChange = async (zoneId, payload) =>
+  (await api.post(`/zones/${zoneId}/schedule`, payload)).data; // { op, record, runAt }
+export const cancelSchedule = async (zoneId, sid) =>
+  (await api.delete(`/zones/${zoneId}/schedule/${sid}`)).data;
+
+/* ---------------------------- Webhooks -------------------------- */
+export const listWebhooks = async () => (await api.get('/webhooks')).data;
+export const createWebhook = async (url, events) => (await api.post('/webhooks', { url, events })).data;
+export const deleteWebhook = async (id) => (await api.delete(`/webhooks/${id}`)).data;
 
 /* ---------------------------- Public ---------------------------- */
 export const getLiveStats = async () => (await api.get('/public/stats')).data;
