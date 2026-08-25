@@ -19,9 +19,9 @@ export default function GlobalMap() {
       <div className="container-custom py-32">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div className="max-w-2xl">
-            <span className="eyebrow"><Globe className="h-3 w-3" strokeWidth={2} /> Global anycast</span>
-            <h2 className="mt-6 text-4xl font-bold tracking-[-0.03em] sm:text-5xl">Answered from the nearest edge.</h2>
-            <p className="mt-5 text-lg text-muted-foreground">Authoritative nameservers on three continents resolve every query from the closest location — no configuration required.</p>
+            <span className="eyebrow"><Globe className="h-3 w-3" strokeWidth={2} /> Global network</span>
+            <h2 className="mt-6 text-4xl font-bold tracking-[-0.03em] sm:text-5xl">Nameservers across three continents.</h2>
+            <p className="mt-5 text-lg text-muted-foreground">Authoritative nameservers in three regions keep your DNS resilient and highly available — no configuration required.</p>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {FILTERS.map((f) => (

@@ -11,7 +11,7 @@ export default function WorldMap() {
     <div className="relative mx-auto flex w-full max-w-7xl flex-col">
       <div className="relative flex w-full flex-col items-center py-3">
         <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[90%] w-[90%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[100px]" />
-        <img src="/world_map.png" alt="Global anycast network" className="h-auto w-full opacity-90 contrast-125 grayscale-[20%]" />
+        <img src="/world_map.png" alt="Global nameserver network" className="h-auto w-full opacity-90 contrast-125 grayscale-[20%]" />
 
         {PINS.map((pin, i) => (
           <div key={i} className="group absolute z-10" style={{ top: pin.top, left: pin.left }}>

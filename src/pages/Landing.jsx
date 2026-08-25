@@ -56,7 +56,7 @@ const POPS = [
 const STEPS = [
   { n: '01', title: 'Add your domain', body: 'Create a zone in seconds. We generate your records and nameservers instantly.' },
   { n: '02', title: 'Point your nameservers', body: 'Update NS records at your registrar to ns1–ns3.stackryze.com.' },
-  { n: '03', title: 'Resolve worldwide', body: 'Queries answer from the nearest edge the moment propagation completes.' },
+  { n: '03', title: 'Resolve worldwide', body: 'Your zone is served from nameservers in three regions the moment propagation completes.' },
 ];
 
 export default function Landing() {
@@ -71,7 +71,7 @@ export default function Landing() {
           <div className="container-custom grid items-center gap-16 pt-40 pb-24 lg:grid-cols-[1.1fr_0.9fr] lg:pt-44 lg:pb-32">
             <div>
               <Reveal mount>
-                <span className="eyebrow"><span className="h-1.5 w-1.5 rounded-full bg-primary" /> Global anycast DNS</span>
+                <span className="eyebrow"><span className="h-1.5 w-1.5 rounded-full bg-primary" /> Globally distributed DNS</span>
               </Reveal>
               <Reveal mount delay={0.06}>
                 <h1 className="text-fade mt-6 text-[2.75rem] font-semibold leading-[0.98] tracking-[-0.03em] sm:text-6xl lg:text-[4.75rem]">
@@ -80,7 +80,7 @@ export default function Landing() {
               </Reveal>
               <Reveal mount delay={0.12}>
                 <p className="mt-7 max-w-md text-lg leading-relaxed text-muted-foreground">
-                  Free, open-source DNS on a global anycast network. Manage every zone from a clean dashboard and answer queries from the nearest edge.
+                  Free, open-source DNS on a globally distributed network. Manage every zone from a clean dashboard, served by resilient nameservers across three regions.
                 </p>
               </Reveal>
               <Reveal mount delay={0.18}>
@@ -113,7 +113,7 @@ export default function Landing() {
               <div className="shell">
                 <div className="core overflow-hidden">
                   <div className="flex items-center justify-between px-5 py-3.5">
-                    <span className="font-mono text-xs text-muted-foreground">anycast · stackryze.com</span>
+                    <span className="font-mono text-xs text-muted-foreground">network · stackryze.com</span>
                     <span className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.15em] text-success">
                       <span className="relative flex h-1.5 w-1.5"><span className="absolute inline-flex h-full w-full rounded-full bg-success/60" /><span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-success" /></span>
                       Live
@@ -176,8 +176,8 @@ export default function Landing() {
                     <Boxes className="h-28 w-28 text-white/[0.04] transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-110 group-hover:text-primary/10" strokeWidth={1} />
                   </div>
                   <div className="mt-10">
-                    <h3 className="text-xl font-semibold">Global anycast network</h3>
-                    <p className="mt-2 max-w-md text-muted-foreground">Authoritative nameservers across three continents answer every query from the location closest to your visitor.</p>
+                    <h3 className="text-xl font-semibold">Globally distributed network</h3>
+                    <p className="mt-2 max-w-md text-muted-foreground">Authoritative nameservers across three continents keep your domains resilient and highly available worldwide.</p>
                   </div>
                 </article>
               </Reveal>
@@ -222,13 +222,13 @@ export default function Landing() {
                   </div>
                   <div className="w-full max-w-sm">
                     <CodeWindow title="dig stackryze.com" lang="shell"
-                      stats={[{ label: 'query', value: 'A · 12ms' }, { label: 'status', value: 'NOERROR' }, { label: 'edge', value: 'FRA' }]}>
+                      stats={[{ label: 'query', value: 'A · 12ms' }, { label: 'status', value: 'NOERROR' }, { label: 'region', value: 'FRA' }]}>
                       <div><M>$</M> <K>dig</K> stackryze.com <K>+short</K></div>
                       <div className="text-foreground">192.0.2.10</div>
                       <div className="mt-2"><C>;; ANSWER SECTION:</C></div>
                       <div><M>stackryze.com.</M> <M>300</M> <K>IN</K> <K>A</K> <span className="text-foreground">192.0.2.10</span></div>
                       <div className="mt-1"><C>;; SERVER: ns1.stackryze.com</C></div>
-                      <div><V>;; resolved from edge · FRA · 12ms</V></div>
+                      <div><V>;; answered by ns2.stackryze.com · FRA · 12ms</V></div>
                     </CodeWindow>
                   </div>
                 </article>

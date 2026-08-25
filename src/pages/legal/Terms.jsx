@@ -41,7 +41,7 @@ export default function Terms() {
           charge as a community and non-profit initiative.
         </p>
         <p>
-          We operate a distributed anycast network and target a best-effort availability of 99.9%
+          We operate a globally distributed network and target a best-effort availability of 99.9%
           uptime. This target is a goal, not a contractual guarantee, and does not constitute a
           service level agreement.
         </p>
