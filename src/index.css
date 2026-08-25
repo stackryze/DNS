@@ -59,35 +59,35 @@
 
 :root {
   /* Surfaces — deep space-dark with a cool indigo undertone (hue 265) */
-  --background: oklch(0.135 0.012 265);
-  --foreground: oklch(0.975 0.004 265);
-  --card: oklch(0.178 0.013 265);
-  --card-foreground: oklch(0.975 0.004 265);
-  --popover: oklch(0.168 0.013 265);
-  --popover-foreground: oklch(0.975 0.004 265);
-  --secondary: oklch(0.228 0.014 265);
-  --secondary-foreground: oklch(0.975 0.004 265);
-  --muted: oklch(0.228 0.014 265);
-  --muted-foreground: oklch(0.70 0.018 265);
-  --accent: oklch(0.252 0.016 265);
-  --accent-foreground: oklch(0.975 0.004 265);
+  --background: oklch(0.155 0.004 250);
+  --foreground: oklch(0.98 0.002 250);
+  --card: oklch(0.188 0.005 250);
+  --card-foreground: oklch(0.98 0.002 250);
+  --popover: oklch(0.178 0.005 250);
+  --popover-foreground: oklch(0.98 0.002 250);
+  --secondary: oklch(0.232 0.006 250);
+  --secondary-foreground: oklch(0.98 0.002 250);
+  --muted: oklch(0.232 0.006 250);
+  --muted-foreground: oklch(0.66 0.01 250);
+  --accent: oklch(0.255 0.007 250);
+  --accent-foreground: oklch(0.98 0.002 250);
 
-  /* Brand accent — electric indigo */
-  --primary: oklch(0.585 0.208 268);
-  --primary-foreground: oklch(0.99 0.01 268);
-  --primary-bright: oklch(0.66 0.20 266);
+  /* Brand accent — electric gold (single-accent, ClickHouse-model) */
+  --primary: oklch(0.86 0.165 92);
+  --primary-foreground: oklch(0.18 0.02 92);
+  --primary-bright: oklch(0.905 0.15 96);
 
-  /* Semantic status */
-  --destructive: oklch(0.63 0.215 22);
+  /* Semantic status — four separable hues */
+  --destructive: oklch(0.64 0.22 25);
   --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.74 0.16 158);
-  --warning: oklch(0.80 0.155 78);
+  --success: oklch(0.76 0.17 158);
+  --warning: oklch(0.72 0.16 55);
 
   /* Hairlines / fields */
-  --border: oklch(1 0 0 / 8%);
-  --border-strong: oklch(1 0 0 / 14%);
-  --input: oklch(1 0 0 / 11%);
-  --ring: oklch(0.585 0.208 268);
+  --border: oklch(1 0 0 / 7%);
+  --border-strong: oklch(1 0 0 / 13%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.86 0.165 92);
 
   --radius: 0.75rem;
 }
@@ -132,8 +132,8 @@
     color: var(--foreground);
   }
 
-  /* Global atmospheric backdrop — layered indigo light + fine grain.
-     Transparent page wrappers show this through; panels float above. */
+  /* Global backdrop — subtle structural light + deep vignette + fine grain.
+     Flat, technical (no colored halo). Panels float above via contrast. */
   body::before {
     content: "";
     position: fixed;
@@ -141,9 +141,8 @@
     z-index: 0;
     pointer-events: none;
     background:
-      radial-gradient(58% 42% at 50% -6%, color-mix(in oklch, var(--primary) 20%, transparent) 0%, transparent 62%),
-      radial-gradient(42% 34% at 88% 4%, color-mix(in oklch, var(--primary-bright) 9%, transparent) 0%, transparent 55%),
-      radial-gradient(65% 55% at 10% 104%, color-mix(in oklch, oklch(0.52 0.15 300) 8%, transparent) 0%, transparent 60%);
+      radial-gradient(72% 48% at 50% -12%, oklch(1 0 0 / 3.5%) 0%, transparent 60%),
+      radial-gradient(120% 70% at 50% 116%, oklch(0 0 0 / 35%) 0%, transparent 72%);
   }
   body::after {
     content: "";

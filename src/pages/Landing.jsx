@@ -13,14 +13,14 @@ const EASE = [0.16, 1, 0.3, 1];
 // below-the-fold uses scroll-triggered reveal.
 function Reveal({ children, delay = 0, className, mount = false }) {
   const reduce = useReducedMotion();
-  const anim = { opacity: 1, y: 0, filter: 'blur(0px)' };
-  const init = reduce ? false : { opacity: 0, y: 28, filter: 'blur(8px)' };
+  const anim = { opacity: 1, y: 0 };
+  const init = reduce ? false : { opacity: 0, y: 24 };
   return (
     <motion.div
       className={className}
       initial={init}
       {...(mount ? { animate: anim } : { whileInView: anim, viewport: { once: true, amount: 0.25 } })}
-      transition={{ duration: 0.85, delay, ease: EASE }}
+      transition={{ duration: 0.7, delay, ease: EASE }}
     >
       {children}
     </motion.div>
@@ -29,9 +29,9 @@ function Reveal({ children, delay = 0, className, mount = false }) {
 
 // Button-in-button pill CTA with a nested circular trailing icon.
 function CTA({ to, href, children, tone = 'solid' }) {
-  const solid = 'bg-foreground text-background';
+  const solid = 'bg-[linear-gradient(180deg,var(--primary-bright),var(--primary))] text-primary-foreground';
   const glass = 'border border-white/10 bg-white/[0.03] text-foreground hover:bg-white/[0.06]';
-  const inner = tone === 'solid' ? 'bg-background/15' : 'bg-white/[0.06]';
+  const inner = tone === 'solid' ? 'bg-black/15' : 'bg-white/[0.06]';
   const cls = `group inline-flex items-center gap-3 rounded-full py-1.5 pl-6 pr-1.5 text-[15px] font-medium transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] ${tone === 'solid' ? solid : glass}`;
   const body = (
     <>
@@ -92,7 +92,7 @@ export default function Landing() {
                     <React.Fragment key={s.l}>
                       {i > 0 && <span className="h-8 w-px bg-white/10" />}
                       <div>
-                        <div className="font-display text-2xl font-semibold tracking-tight">{s.v}</div>
+                        <div className="font-display text-2xl font-semibold tracking-tight text-primary">{s.v}</div>
                         <div className="mt-0.5 text-xs text-muted-foreground">{s.l}</div>
                       </div>
                     </React.Fragment>

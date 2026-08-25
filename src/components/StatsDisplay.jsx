@@ -40,7 +40,7 @@ export default function StatsDisplay() {
           {loading ? (
             <Skeleton className="mx-auto mt-2 h-6 w-14" />
           ) : (
-            <p className="mt-1 font-display text-xl font-semibold text-foreground">{it.value}</p>
+            <p className="mt-1 font-display text-xl font-semibold text-primary">{it.value}</p>
           )}
         </div>
       ))}

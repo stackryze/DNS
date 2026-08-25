@@ -57,10 +57,10 @@ export default function SiteHeader() {
             </Link>
             <Link
               to="/login"
-              className="group flex items-center gap-2 rounded-full bg-foreground py-1 pl-4 pr-1 text-sm font-medium text-background transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+              className="group flex items-center gap-2 rounded-full bg-[linear-gradient(180deg,var(--primary-bright),var(--primary))] py-1 pl-4 pr-1 text-sm font-medium text-primary-foreground transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
             >
               Get started
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-background/15 transition-transform duration-300 group-hover:translate-x-0.5">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/15 transition-transform duration-300 group-hover:translate-x-0.5">
                 <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
               </span>
             </Link>
@@ -83,7 +83,7 @@ export default function SiteHeader() {
                   <a key={l.label} href={l.href} target={l.external ? '_blank' : undefined} rel={l.external ? 'noreferrer' : undefined} className="rounded-2xl px-4 py-2.5 text-sm text-muted-foreground hover:bg-white/[0.05] hover:text-foreground">{l.label}</a>
                 )
               )}
-              <Link to="/login" onClick={() => setOpen(false)} className="mt-1 flex items-center justify-center gap-2 rounded-2xl bg-foreground px-4 py-2.5 text-sm font-medium text-background">
+              <Link to="/login" onClick={() => setOpen(false)} className="mt-1 flex items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,var(--primary-bright),var(--primary))] px-4 py-2.5 text-sm font-medium text-primary-foreground">
                 Get started <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
               </Link>
             </div>
