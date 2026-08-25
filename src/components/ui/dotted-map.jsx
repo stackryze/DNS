@@ -2,6 +2,16 @@ import * as React from "react";
 import { createMap } from "svg-dotted-map";
 import { cn } from "../../lib/utils";
 
+// The continent dots never change once geometry is fixed, so isolate + memoize them.
+// This keeps marker/filter/parent re-renders from touching thousands of SVG nodes.
+const MapDots = React.memo(function MapDots({ points, xStep, yToRowIndex, dotColor, dotRadius, stagger }) {
+  return points.map((point, index) => {
+    const rowIndex = yToRowIndex.get(point.y) ?? 0;
+    const offsetX = stagger && rowIndex % 2 === 1 ? xStep / 2 : 0;
+    return <circle cx={point.x + offsetX} cy={point.y} r={dotRadius} fill={dotColor} key={`${point.x}-${point.y}-${index}`} />;
+  });
+});
+
 // ClickHouse-style dotted world map. Dots form the continents; markers pin locations.
 export function DottedMap({
   width = 150,
@@ -18,8 +28,11 @@ export function DottedMap({
   style,
   ...svgProps
 }) {
-  const { points, addMarkers } = createMap({ width, height, mapSamples });
-  const processedMarkers = addMarkers(markers);
+  const { points, addMarkers } = React.useMemo(
+    () => createMap({ width, height, mapSamples }),
+    [width, height, mapSamples]
+  );
+  const processedMarkers = React.useMemo(() => addMarkers(markers), [addMarkers, markers]);
 
   const { xStep, yToRowIndex } = React.useMemo(() => {
     const sorted = [...points].sort((a, b) => a.y - b.y || a.x - b.x);
@@ -49,11 +62,7 @@ export function DottedMap({
       style={{ width: "100%", height: "100%", ...style }}
       {...svgProps}
     >
-      {points.map((point, index) => {
-        const rowIndex = yToRowIndex.get(point.y) ?? 0;
-        const offsetX = stagger && rowIndex % 2 === 1 ? xStep / 2 : 0;
-        return <circle cx={point.x + offsetX} cy={point.y} r={dotRadius} fill={dotColor} key={`${point.x}-${point.y}-${index}`} />;
-      })}
+      <MapDots points={points} xStep={xStep} yToRowIndex={yToRowIndex} dotColor={dotColor} dotRadius={dotRadius} stagger={stagger} />
 
       {processedMarkers.map((marker, index) => {
         const rowIndex = yToRowIndex.get(marker.y) ?? 0;
