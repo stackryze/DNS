@@ -100,6 +100,7 @@ export const revokeToken = async (id) => (await api.delete(`/tokens/${id}`)).dat
 export const getAudit = async (limit = 50) => (await api.get('/audit', { params: { limit } })).data;
 export const getZoneAudit = async (zoneId, limit = 50) =>
   (await api.get(`/audit/zone/${zoneId}`, { params: { limit } })).data;
+export const revertAudit = async (auditId) => (await api.post(`/audit/${auditId}/revert`)).data;
 
 /* ---------------------------- Public ---------------------------- */
 export const getLiveStats = async () => (await api.get('/public/stats')).data;

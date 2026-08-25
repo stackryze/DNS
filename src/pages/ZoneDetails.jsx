@@ -546,7 +546,7 @@ export default function ZoneDetails() {
             <Activity className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Recent activity</h2>
           </div>
-          <ActivityTimeline key={activityKey} zoneId={id} limit={15} />
+          <ActivityTimeline key={activityKey} zoneId={id} limit={15} onChanged={afterTool} />
         </div>
       )}
 
