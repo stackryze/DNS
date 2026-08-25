@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getZoneDetails, getZoneRecords, addRecord, deleteRecord, deleteZone, verifyZone, verifyOwnership, exportZone, batchRecords, getRecordMeta } from '../services/api';
-import { ArrowLeft, Plus, Trash2, Globe, AlertCircle, Loader2, Copy, Check, AlertTriangle, Download, ShieldOff, RotateCw, MoreHorizontal, Pencil, X, Sparkles, FileUp, Search, Wrench, Activity, Stethoscope, Timer, CalendarClock, Tag, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Globe, AlertCircle, Loader2, Copy, Check, AlertTriangle, Download, ShieldOff, ShieldCheck, RotateCw, MoreHorizontal, Pencil, X, Sparkles, FileUp, Search, Wrench, Activity, Stethoscope, Timer, CalendarClock, Tag, MessageSquare, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -22,11 +22,25 @@ import DiagnoseDialog from '../components/zone/DiagnoseDialog';
 import TemporaryRecordDialog from '../components/zone/TemporaryRecordDialog';
 import ScheduleDialog from '../components/zone/ScheduleDialog';
 import RecordMetaDialog from '../components/zone/RecordMetaDialog';
+import DnssecDialog from '../components/zone/DnssecDialog';
+import DeploymentDialog from '../components/zone/DeploymentDialog';
 import ActivityTimeline from '../components/ActivityTimeline';
 import { cn } from '../lib/utils';
 
 const stripDot = (s) => (s && s.endsWith('.') ? s.slice(0, -1) : s);
 const metaKey = (r) => `${stripDot(r.name)}|${r.type}|${stripDot(r.content)}`;
+
+// Safe Mode: flag deletions that can break email or delegation.
+function riskWarning(row) {
+  const name = stripDot(row.name).toLowerCase();
+  const content = stripDot(row.content).toLowerCase();
+  if (row.type === 'MX') return 'This is an MX record — deleting it can stop email delivery.';
+  if (row.type === 'TXT' && content.startsWith('v=spf1')) return 'This is an SPF record — deleting it hurts deliverability and anti-spoofing.';
+  if (row.type === 'TXT' && (name.startsWith('_dmarc') || content.startsWith('v=dmarc1'))) return 'This is a DMARC record — deleting it weakens spoofing protection.';
+  if (row.type === 'TXT' && name.includes('_domainkey')) return 'This looks like a DKIM key — deleting it can break signed email.';
+  if (row.type === 'CNAME' && name.includes('autodiscover')) return 'This autodiscover record helps mail clients — deleting it can disrupt email.';
+  return null;
+}
 
 const TYPE_TONE = {
   A: 'text-primary', AAAA: 'text-primary', CNAME: 'text-foreground', NS: 'text-foreground',
@@ -227,6 +241,7 @@ export default function ZoneDetails() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [activityKey, setActivityKey] = useState(0);
   const [diagnoseOpen, setDiagnoseOpen] = useState(false);
+  const [dnssecOpen, setDnssecOpen] = useState(false);
   const [meta, setMeta] = useState({}); // recordKey -> { comment, labels }
   const [metaDialog, setMetaDialog] = useState(null); // { key, label, initial }
   const [labelFilter, setLabelFilter] = useState('all');
@@ -364,6 +379,7 @@ export default function ZoneDetails() {
             <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="Zone actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onSelect={handleExportZone}><Download /> Export zone file</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setDnssecOpen(true)}><ShieldCheck /> Manage DNSSEC</DropdownMenuItem>
               <DropdownMenuSeparator />
               <AlertDialog>
                 <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive"><Trash2 /> Delete zone</DropdownMenuItem></AlertDialogTrigger>
@@ -475,6 +491,7 @@ export default function ZoneDetails() {
                 <DropdownMenuItem onSelect={() => setToolsDialog('builder')}><Wrench /> SPF / DMARC builder</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setToolsDialog('temporary')}><Timer /> Temporary record</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setToolsDialog('schedule')}><CalendarClock /> Schedule change</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setToolsDialog('deploy')}><Rocket /> New deployment</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button onClick={() => setRecordDialog({ open: true, initial: null })}><Plus className="h-4 w-4" /> Add record</Button>
@@ -490,6 +507,10 @@ export default function ZoneDetails() {
                 <AlertDialogTrigger asChild><Button variant="destructive" size="sm" disabled={bulkDeleting}>{bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Delete selected</Button></AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader><AlertDialogTitle>Delete {selected.size} record{selected.size > 1 ? 's' : ''}?</AlertDialogTitle><AlertDialogDescription>This permanently removes the selected DNS records. This cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                  {(() => {
+                    const risky = rows.filter((r) => selected.has(`${r.name}-${r.type}-${r.content}`) && riskWarning(r));
+                    return risky.length ? <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{risky.length} of these affect email or delegation (MX/SPF/DMARC/DKIM/NS).</div> : null;
+                  })()}
                   <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => bulkDelete(rows.filter((r) => selected.has(`${r.name}-${r.type}-${r.content}`)))}>Delete</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
@@ -569,6 +590,7 @@ export default function ZoneDetails() {
                               <AlertDialogTrigger asChild><button aria-label="Delete record" disabled={deletingKey === key} className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">{deletingKey === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button></AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader><AlertDialogTitle>Delete {row.type} record?</AlertDialogTitle><AlertDialogDescription className="break-all font-mono text-xs">{stripDot(row.content)}</AlertDialogDescription></AlertDialogHeader>
+                                {riskWarning(row) && <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{riskWarning(row)}</div>}
                                 <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => deleteOne(row)}>Delete</AlertDialogAction></AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
@@ -602,7 +624,9 @@ export default function ZoneDetails() {
       <RecordBuilders open={toolsDialog === 'builder'} onOpenChange={(o) => setToolsDialog(o ? 'builder' : null)} zoneId={id} onApplied={afterTool} />
       <TemporaryRecordDialog open={toolsDialog === 'temporary'} onOpenChange={(o) => setToolsDialog(o ? 'temporary' : null)} zoneId={id} zoneName={zone.name} onApplied={afterTool} />
       <ScheduleDialog open={toolsDialog === 'schedule'} onOpenChange={(o) => setToolsDialog(o ? 'schedule' : null)} zoneId={id} zoneName={zone.name} onApplied={afterTool} />
+      <DeploymentDialog open={toolsDialog === 'deploy'} onOpenChange={(o) => setToolsDialog(o ? 'deploy' : null)} zoneId={id} onApplied={afterTool} />
       <DiagnoseDialog open={diagnoseOpen} onOpenChange={setDiagnoseOpen} zoneName={zone.name} />
+      <DnssecDialog open={dnssecOpen} onOpenChange={setDnssecOpen} zoneId={id} zoneName={zone.name} />
       <RecordMetaDialog
         open={!!metaDialog}
         onOpenChange={(o) => !o && setMetaDialog(null)}
