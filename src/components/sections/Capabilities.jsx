@@ -121,9 +121,9 @@ function MockChecker() {
 
 function MockApi() {
   return (
-    <CodeWindow title="api.stackryze.com" lang="json" className="rounded-none border-0"
+    <CodeWindow title="api-dns.stackryze.com" lang="json" className="rounded-none border-0"
       stats={[{ label: 'method', value: 'POST' }, { label: 'status', value: '201' }, { label: 'time', value: '38ms' }]}>
-      <div><M>$</M> <K>curl</K> -X POST https://api.stackryze.com<M>/zones/:id/records</M> \</div>
+      <div><M>$</M> <K>curl</K> -X POST https://api-dns.stackryze.com<M>/zones/:id/records</M> \</div>
       <div className="pl-4"><M>-H</M> <V>"Authorization: Bearer •••"</V> \</div>
       <div className="pl-4"><M>-d</M> <V>{'{ "type":"A", "name":"@", "content":"192.0.2.10" }'}</V></div>
       <div className="mt-2"><C>// 201 Created</C></div>
