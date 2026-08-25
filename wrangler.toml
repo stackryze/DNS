@@ -1,6 +1,5 @@
 # Cloudflare Worker serving the static SPA build (Workers static assets).
 # `wrangler deploy` uploads ./dist and serves it; no Worker script needed.
-# NOTE: `name` must match your Cloudflare Worker service name.
 name = "stackryze-dns-frontend"
 compatibility_date = "2026-08-18"
 

@@ -1,98 +1,74 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
-    withCredentials: true, // Send the session cookie (ZITADEL SSO)
-    headers: {
-        'Content-Type': 'application/json'
-    }
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
+  withCredentials: true, // send the ZITADEL session cookie (dns.sid)
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Response Interceptor: Handle 401 (session expired / not logged in)
+// Redirect to login on session expiry / unauthenticated.
 api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            // Check if not already on login/signup to avoid loops
-            if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/signup')) {
-                localStorage.removeItem('sr_auth');
-                window.location.href = '/login';
-            }
-        }
-        return Promise.reject(error);
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const p = window.location.pathname;
+      if (!p.includes('/login') && !p.includes('/signup')) {
+        localStorage.removeItem('sr_auth');
+        window.location.href = '/login';
+      }
     }
+    return Promise.reject(error);
+  }
 );
 
-export const getZones = async () => {
-    const response = await api.get('/zones');
-    return response.data;
-};
+/* ----------------------------- Auth ----------------------------- */
+export const getMe = async () => (await api.get('/auth/me')).data;
 
-export const createZone = async (name) => {
-    const response = await api.post('/zones', { name });
-    return response.data;
-};
+/* ----------------------------- Zones ---------------------------- */
+// -> { zones: [], limits: { zoneLimit, currentZones, remainingZones } }
+export const getZones = async () => (await api.get('/zones')).data;
 
-export const deleteZone = async (id) => {
-    const response = await api.delete(`/zones/${id}`);
-    return response.data;
-};
+export const createZone = async (name) => (await api.post('/zones', { name })).data;
 
-export const getZoneDetails = async (id, includeRecords = true) => {
-    const response = await api.get(`/zones/${id}?rrsets=${includeRecords}`);
-    return response.data;
-};
+export const getZoneDetails = async (id, includeRecords = true) =>
+  (await api.get(`/zones/${id}?rrsets=${includeRecords}`)).data;
 
-export const getZoneRecords = async (id, query = '', max = 100) => {
-    const response = await api.get(`/zones/${id}/records`, {
-        params: { q: query, max }
-    });
-    return response.data;
-};
+// -> [ { name, type, ttl, records: [{ content, disabled }] } ]  (PowerDNS rrsets)
+export const getZoneRecords = async (id, query = '', max = 100) =>
+  (await api.get(`/zones/${id}/records`, { params: { q: query, max } })).data;
 
-export const addRecord = async (zoneId, recordData) => {
-    // recordData = { type, name, content, ttl }
-    const response = await api.post(`/zones/${zoneId}/records`, recordData);
-    return response.data;
-};
+export const addRecord = async (zoneId, recordData) =>
+  (await api.post(`/zones/${zoneId}/records`, recordData)).data; // { type, name, content, ttl }
 
-export const deleteRecord = async (zoneId, recordName, recordType, recordContent = null) => {
-    const response = await api.delete(`/zones/${zoneId}/records`, {
-        data: { name: recordName, type: recordType, content: recordContent }
-    });
-    return response.data;
-};
+export const deleteRecord = async (zoneId, name, type, content = null) =>
+  (await api.delete(`/zones/${zoneId}/records`, { data: { name, type, content } })).data;
 
-export const verifyZone = async (id) => {
-    const response = await api.post(`/zones/${id}/verify`);
-    return response.data;
-};
+export const deleteZone = async (id) => (await api.delete(`/zones/${id}`)).data;
 
-export const verifyOwnership = async (id) => {
-    const response = await api.post(`/zones/${id}/verify-ownership`);
-    return response.data;
-};
+export const verifyZone = async (id) => (await api.post(`/zones/${id}/verify`)).data;
+
+export const verifyOwnership = async (id) => (await api.post(`/zones/${id}/verify-ownership`)).data;
 
 export const exportZone = async (id, zoneName) => {
-    const response = await api.get(`/zones/${id}/export`, {
-        responseType: 'blob'
-    });
-    
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${zoneName}.zone`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+  const res = await api.get(`/zones/${id}/export`, { responseType: 'blob' });
+  const url = window.URL.createObjectURL(new Blob([res.data]));
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `${zoneName}.zone`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
 };
 
-// Public Stats
-export const getLiveStats = async () => {
-    const response = await api.get('/public/stats');
-    return response.data;
-};
+/* -------------------------- DNS Checker ------------------------- */
+export const checkDnsRecord = async (domain, recordType) =>
+  (await api.get(`/dns-checker/check/${domain}/${recordType}`)).data;
+
+export const checkPropagation = async (domain) =>
+  (await api.get(`/dns-checker/propagation/${domain}`)).data;
+
+/* ---------------------------- Public ---------------------------- */
+export const getLiveStats = async () => (await api.get('/public/stats')).data;
 
 export default api;
