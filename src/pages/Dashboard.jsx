@@ -1,218 +1,259 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getZones, createZone } from '../services/api';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, Globe, Activity, ArrowRight, Loader2, Search, Zap, Server, ShieldCheck, ShieldOff } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { useToast } from '../components/Toast';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Globe, ArrowUpDown, Loader2, Search, Server, ShieldCheck, ShieldOff, Clock, ChevronRight, RotateCw, Inbox } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Badge } from '../components/ui/badge';
+import { Skeleton } from '../components/ui/skeleton';
+import { Label } from '../components/ui/label';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../components/ui/dialog';
+import { cn } from '../lib/utils';
 
-const Dashboard = () => {
-    const toast = useToast();
-    const [zones, setZones] = useState([]);
-    const [limits, setLimits] = useState({ zoneLimit: 3, currentZones: 0, remainingZones: 3 });
-    const [newZone, setNewZone] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [creating, setCreating] = useState(false);
-    const [isInputFocused, setIsInputFocused] = useState(false);
-    const [searchParams] = useSearchParams();
-
-    const searchQuery = searchParams.get('q') || '';
-    const filteredZones = zones.filter(zone =>
-        zone.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    useEffect(() => {
-        fetchZones();
-    }, []);
-
-    const fetchZones = async () => {
-        try {
-            const data = await getZones();
-            setZones(data.zones || data); // Handle new format with limits
-            if (data.limits) {
-                setLimits(data.limits);
-            }
-        } catch (err) {
-            setError('Failed to fetch zones. Please check your connection.');
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleCreateZone = async (e) => {
-        e.preventDefault();
-        if (!newZone) return;
-
-        try {
-            setCreating(true);
-            await createZone(newZone);
-            setNewZone('');
-            setIsInputFocused(false); // Reset focus
-            toast.success(`Zone "${newZone}" created successfully`);
-            fetchZones(); // Refresh list
-        } catch (err) {
-            toast.error('Failed to create zone: ' + (err.response?.data?.error || err.message));
-        } finally {
-            setCreating(false);
-        }
-    };
-
-    return (
-        <div className="h-full flex flex-col gap-4 md:gap-8 pb-2">
-            {/* Fixed Header Section (Title + Stats) - Hidden on mobile, shown on desktop */}
-            <div className="shrink-0 space-y-4 md:space-y-8">
-                {/* Header & Add Domain */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 relative z-10">
-                    <div className="hidden md:block">
-                        <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight drop-shadow-lg">Overview</h1>
-                        <p className="text-gray-200 text-base drop-shadow-md font-medium">Manage your domains and DNS records.</p>
-                    </div>
-
-                    <div className="flex flex-col items-stretch md:items-end gap-3 pointer-events-auto relative w-full md:w-auto">
-                        <form onSubmit={handleCreateZone} className={`flex items-center gap-2 bg-[#1a1a1a] border p-1.5 rounded-xl shadow-xl shadow-black/20 transition-all duration-300 ${isInputFocused ? 'border-[#38BDF8]/50 ring-1 ring-[#38BDF8]/50' : 'border-white/10'}`}>
-                            <div className="relative flex-1">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Globe className={`h-4 w-4 transition-colors ${isInputFocused ? 'text-[#38BDF8]' : 'text-gray-400'}`} />
-                                </div>
-                                <input
-                                    type="text"
-                                    placeholder="example.com"
-                                    value={newZone}
-                                    onChange={(e) => setNewZone(e.target.value)}
-                                    onFocus={() => setIsInputFocused(true)}
-                                    className="bg-transparent border-none text-white pl-10 pr-4 py-2 focus:outline-none placeholder:text-gray-500 w-full md:w-64 text-sm font-medium"
-                                    disabled={creating}
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={creating}
-                                className="bg-[#38BDF8] hover:bg-[#0EA5E9] text-white px-3 md:px-5 py-2 rounded-lg font-bold flex items-center gap-2 transition-all shadow-lg shadow-[#38BDF8]/20 disabled:opacity-50 text-xs md:text-sm whitespace-nowrap"
-                            >
-                                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                <span className="hidden sm:inline">Add Domain</span>
-                                <span className="sm:hidden">Add</span>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                {/* Quick Stats Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
-                    <StatCard icon={Server} label="Total Zones" value={`${zones.length}/${limits.zoneLimit}`} color="bg-blue-500/20 text-blue-400" border="border-blue-500/20" subtitle={limits.remainingZones > 0 ? `${limits.remainingZones} remaining` : 'Limit reached'} />
-                    <StatCard icon={Zap} label="Unverified" value={zones.filter(z => z.status === 'pending' || z.status === 'pending_verification' || z.status === 'pending_ownership').length} color="bg-pink-500/20 text-pink-400" border="border-pink-500/20" />
-                    <StatCard icon={ShieldCheck} label="Active" value={zones.filter(z => z.status === 'active').length} color="bg-emerald-500/20 text-emerald-400" border="border-emerald-500/20" />
-                    <StatCard icon={ShieldOff} label="Suspended" value={zones.filter(z => z.status === 'suspended').length} color="bg-red-500/20 text-red-400" border="border-red-500/20" />
-                </div>
-            </div>
-
-            {/* Scrollable Content Grid */}
-            <div className="flex-1 md:min-h-0">
-                {/* Zone List Area - Independently Scrollable */}
-                <div className="md:h-full md:overflow-y-auto pr-2 custom-scrollbar">
-                    {loading ? (
-                        <div className="flex justify-center py-20">
-                            <Loader2 className="w-10 h-10 text-[#38BDF8] animate-spin" />
-                        </div>
-                    ) : error ? (
-                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-8 rounded-2xl text-center font-bold">
-                            {error}
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-4">
-                            {filteredZones.map((zone, index) => (
-                                <motion.div
-                                    key={zone._id}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.05 }}
-                                >
-                                    <Link to={`/zones/${zone._id}`} className="block group">
-                                        <div className="bg-[#1a1a1a]/60 backdrop-blur-xl border border-white/5 rounded-2xl p-5 hover:bg-[#1a1a1a]/90 hover:border-[#38BDF8]/50 transition-all duration-300 relative overflow-hidden group-hover:shadow-[0_0_30px_-10px_rgba(56,189,248,0.15)] flex items-center justify-between gap-6">
-
-                                            <div className="flex items-center gap-6 flex-1 relative z-10">
-                                                <div>
-                                                    <h3 className="text-xl font-bold text-white mb-1.5 group-hover:text-[#38BDF8] transition-colors truncate">
-                                                        {zone.name}
-                                                    </h3>
-                                                    <div className="flex items-center gap-4 text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
-                                                        <span className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded border border-white/5">
-                                                            <Server className="w-3 h-3" />
-                                                            {zone.records_count || 0} Records
-                                                        </span>
-                                                        <div className={`flex items-center gap-1.5 px-2 py-1 rounded border ${
-                                                            zone.status === 'active' 
-                                                                ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-400' 
-                                                                : zone.status === 'suspended' 
-                                                                    ? 'bg-red-500/5 border-red-500/10 text-red-400'
-                                                                    : 'bg-orange-500/5 border-orange-500/10 text-orange-400'
-                                                            }`}>
-                                                            <div className={`w-1.5 h-1.5 rounded-full ${
-                                                                zone.status === 'active' 
-                                                                    ? 'bg-emerald-500' 
-                                                                    : zone.status === 'suspended' 
-                                                                        ? 'bg-red-500'
-                                                                        : 'bg-orange-500'
-                                                            }`} />
-                                                            {zone.status === 'pending_verification' ? 'Pending Setup' : zone.status === 'suspended' ? 'Suspended' : zone.status}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-3 text-[10px] font-medium text-gray-400 font-mono opacity-80">
-                                                        <span>Created: {new Date(zone.createdAt).toLocaleDateString()}</span>
-                                                        <span className="w-1 h-1 rounded-full bg-gray-700"></span>
-                                                        <span>Updated: {new Date(zone.updatedAt).toLocaleDateString()}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="hidden md:flex items-center px-4 py-2 rounded-lg bg-white/5 border border-white/5 text-sm font-bold text-gray-300 group-hover:bg-[#38BDF8] group-hover:text-white group-hover:border-[#38BDF8] transition-all">
-                                                Manage
-                                                <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
-                                            </div>
-                                        </div>
-                                    </Link>
-                                </motion.div>
-                            ))}
-
-                            {/* Empty State */}
-                            {filteredZones.length === 0 && (
-                                <div className="py-24 text-center bg-[#1a1a1a]/40 border border-dashed border-white/10 rounded-2xl backdrop-blur-md">
-                                    <div className="w-20 h-20 bg-gradient-to-br from-gray-800 to-black rounded-full flex items-center justify-center mx-auto mb-6 border border-white/10 shadow-xl">
-                                        <Activity className="w-10 h-10 text-gray-400" />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-white mb-3">No domains found</h3>
-                                    <p className="text-gray-400 max-w-md mx-auto text-sm leading-relaxed mb-8">
-                                        Get started by adding your first domain. You can verify it and start managing DNS records instantly.
-                                    </p>
-                                    <button
-                                        onClick={() => document.querySelector('input[placeholder="example.com"]')?.focus()}
-                                        className="text-[#38BDF8] font-bold hover:underline"
-                                    >
-                                        Add a domain now &rarr;
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
+const STATUS = {
+  active: { label: 'Active', variant: 'success', dot: 'bg-success' },
+  suspended: { label: 'Suspended', variant: 'destructive', dot: 'bg-destructive' },
+  pending_ownership: { label: 'Verify ownership', variant: 'warning', dot: 'bg-warning' },
+  pending_verification: { label: 'Pending setup', variant: 'warning', dot: 'bg-warning' },
+  pending: { label: 'Pending setup', variant: 'warning', dot: 'bg-warning' },
 };
 
-const StatCard = ({ icon: Icon, label, value, color, border, subtitle }) => (
-    <div className={`bg-[#1a1a1a]/60 backdrop-blur-xl border border-white/5 p-2.5 md:p-6 rounded-lg md:rounded-2xl flex flex-col md:flex-row items-center gap-2 md:gap-5 hover:bg-[#1a1a1a]/80 transition-all hover:border-white/10 group shadow-lg`}>
-        <div className={`p-1.5 md:p-4 rounded-lg md:rounded-xl ${color} ${border} border group-hover:scale-110 transition-transform`}>
-            <Icon className="w-4 h-4 md:w-7 md:h-7" />
-        </div>
-        <div className="text-center md:text-left">
-            <p className="text-gray-500 text-[8px] md:text-[10px] uppercase tracking-wider md:tracking-widest font-bold mb-0.5 md:mb-1">{label}</p>
-            <p className="text-lg md:text-3xl font-black text-white">{value}</p>
-            {subtitle && <p className="text-gray-400 text-[9px] md:text-xs mt-0.5 md:mt-1">{subtitle}</p>}
-        </div>
-    </div>
-);
+function StatusBadge({ status }) {
+  const s = STATUS[status] || { label: status, variant: 'default', dot: 'bg-muted-foreground' };
+  return <Badge variant={s.variant}><span className={cn('h-1.5 w-1.5 rounded-full', s.dot)} />{s.label}</Badge>;
+}
 
-export default Dashboard;
+function StatCard({ icon: Icon, label, value, tone, subtitle }) {
+  return (
+    <div className="panel flex items-center gap-3 rounded-xl p-4 md:gap-4 md:p-5">
+      <div className={cn('flex h-10 w-10 items-center justify-center rounded-lg bg-secondary md:h-11 md:w-11', tone)}><Icon className="h-5 w-5" /></div>
+      <div className="min-w-0">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className="font-display text-xl font-semibold text-foreground md:text-2xl">{value}</p>
+        {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+const DOMAIN_RE = /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z0-9-]{1,63})+$/i;
+
+function CreateZoneDialog({ onCreated, remaining }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [err, setErr] = useState('');
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const value = name.trim().toLowerCase();
+    if (!DOMAIN_RE.test(value)) { setErr('Enter a valid domain, e.g. example.com'); return; }
+    setErr(''); setCreating(true);
+    try {
+      await createZone(value);
+      toast.success(`Zone “${value}” created`);
+      setName(''); setOpen(false); onCreated();
+    } catch (e2) {
+      toast.error('Failed to create zone: ' + (e2.response?.data?.error || e2.message));
+    } finally { setCreating(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button data-add-zone disabled={remaining <= 0} title={remaining <= 0 ? 'Zone limit reached' : undefined}><Plus className="h-4 w-4" /> Add domain</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add a domain</DialogTitle>
+          <DialogDescription>Create a new DNS zone. You can verify ownership and add records right after.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="zone-name">Domain name</Label>
+            <div className="relative">
+              <Globe className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input id="zone-name" autoFocus placeholder="example.com" value={name} onChange={(e) => { setName(e.target.value); setErr(''); }} className="pl-10 font-mono" aria-invalid={!!err} />
+            </div>
+            {err && <p className="text-xs text-destructive">{err}</p>}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+            <Button type="submit" disabled={creating}>{creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Create zone</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function SortHeader({ label, active, onClick, className }) {
+  return (
+    <TableHead className={className}>
+      <button onClick={onClick} className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground">
+        {label}<ArrowUpDown className={cn('h-3.5 w-3.5', active ? 'text-primary' : 'opacity-40')} />
+      </button>
+    </TableHead>
+  );
+}
+
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const [zones, setZones] = useState([]);
+  const [limits, setLimits] = useState({ zoneLimit: 3, remainingZones: 3 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sort, setSort] = useState({ key: 'updatedAt', dir: 'desc' });
+
+  const fetchZones = useCallback(async () => {
+    setLoading(true); setError(null);
+    try {
+      const data = await getZones();
+      setZones(data.zones || data || []);
+      if (data.limits) setLimits(data.limits);
+    } catch (err) {
+      setError('Failed to load zones. Please check your connection.');
+      console.error(err);
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchZones(); }, [fetchZones]);
+
+  const counts = useMemo(() => ({
+    total: zones.length,
+    active: zones.filter((z) => z.status === 'active').length,
+    pending: zones.filter((z) => String(z.status || '').startsWith('pending')).length,
+    suspended: zones.filter((z) => z.status === 'suspended').length,
+  }), [zones]);
+
+  const toggleSort = (key) => setSort((s) => (s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+
+  const visible = useMemo(() => {
+    let list = zones.filter((z) => z.name.toLowerCase().includes(query.toLowerCase()));
+    if (statusFilter !== 'all') {
+      list = list.filter((z) => statusFilter === 'pending' ? String(z.status || '').startsWith('pending') : z.status === statusFilter);
+    }
+    const { key, dir } = sort;
+    const mul = dir === 'asc' ? 1 : -1;
+    return [...list].sort((a, b) => {
+      if (key === 'name') return a.name.localeCompare(b.name) * mul;
+      let av = key === 'records_count' ? (a.records_count || 0) : new Date(a.updatedAt).getTime();
+      let bv = key === 'records_count' ? (b.records_count || 0) : new Date(b.updatedAt).getTime();
+      return (av > bv ? 1 : av < bv ? -1 : 0) * mul;
+    });
+  }, [zones, query, statusFilter, sort]);
+
+  return (
+    <div className="mx-auto flex max-w-6xl flex-col gap-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Domains</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage your zones and DNS records.</p>
+        </div>
+        <CreateZoneDialog onCreated={fetchZones} remaining={limits.remainingZones ?? (limits.zoneLimit - zones.length)} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        <StatCard icon={Server} label="Total zones" value={`${counts.total}/${limits.zoneLimit}`} tone="text-primary" subtitle={(limits.remainingZones ?? 0) > 0 ? `${limits.remainingZones} remaining` : 'Limit reached'} />
+        <StatCard icon={Clock} label="Pending" value={counts.pending} tone="text-warning" />
+        <StatCard icon={ShieldCheck} label="Active" value={counts.active} tone="text-success" />
+        <StatCard icon={ShieldOff} label="Suspended" value={counts.suspended} tone="text-destructive" />
+      </div>
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search domains…" value={query} onChange={(e) => setQuery(e.target.value)} className="pl-10" aria-label="Search domains" />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="sm:w-44"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="suspended">Suspended</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {loading ? (
+        <ZonesSkeleton />
+      ) : error ? (
+        <div className="flex flex-col items-center gap-4 rounded-xl border border-destructive/20 bg-destructive/5 p-12 text-center">
+          <p className="text-sm font-medium text-destructive">{error}</p>
+          <Button variant="outline" onClick={fetchZones}><RotateCw className="h-4 w-4" /> Retry</Button>
+        </div>
+      ) : visible.length === 0 ? (
+        <EmptyState hasZones={zones.length > 0} onClear={() => { setQuery(''); setStatusFilter('all'); }} />
+      ) : (
+        <>
+          <div className="panel hidden overflow-hidden rounded-xl md:block">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <SortHeader label="Domain" active={sort.key === 'name'} onClick={() => toggleSort('name')} />
+                  <TableHead>Status</TableHead>
+                  <SortHeader label="Records" active={sort.key === 'records_count'} onClick={() => toggleSort('records_count')} />
+                  <SortHeader label="Updated" active={sort.key === 'updatedAt'} onClick={() => toggleSort('updatedAt')} />
+                  <TableHead className="w-10" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visible.map((zone) => (
+                  <TableRow key={zone._id} className="cursor-pointer" onClick={() => navigate(`/zones/${zone._id}`)}>
+                    <TableCell className="font-mono font-medium text-foreground">{zone.name}</TableCell>
+                    <TableCell><StatusBadge status={zone.status} /></TableCell>
+                    <TableCell className="text-muted-foreground">{zone.records_count || 0}</TableCell>
+                    <TableCell className="text-muted-foreground">{new Date(zone.updatedAt).toLocaleDateString()}</TableCell>
+                    <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex flex-col gap-3 md:hidden">
+            {visible.map((zone) => (
+              <button key={zone._id} onClick={() => navigate(`/zones/${zone._id}`)} className="panel flex items-center justify-between gap-3 rounded-xl p-4 text-left transition-colors hover:border-border-strong">
+                <div className="min-w-0">
+                  <p className="truncate font-mono font-medium text-foreground">{zone.name}</p>
+                  <div className="mt-2 flex items-center gap-2"><StatusBadge status={zone.status} /><span className="text-xs text-muted-foreground">{zone.records_count || 0} records</span></div>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ZonesSkeleton() {
+  return (
+    <div className="panel overflow-hidden rounded-xl">
+      <div className="border-b border-border px-4 py-3"><Skeleton className="h-4 w-24" /></div>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="flex items-center justify-between gap-4 border-b border-border px-4 py-4 last:border-0">
+          <Skeleton className="h-4 w-48" /><Skeleton className="h-5 w-20 rounded-full" /><Skeleton className="h-4 w-10" /><Skeleton className="h-4 w-20" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ hasZones, onClear }) {
+  return (
+    <div className="flex flex-col items-center rounded-xl border border-dashed border-border bg-card/40 py-20 text-center">
+      <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-full border border-border bg-secondary"><Inbox className="h-7 w-7 text-muted-foreground" /></div>
+      <h3 className="text-lg font-semibold text-foreground">{hasZones ? 'No matching domains' : 'No domains yet'}</h3>
+      <p className="mt-2 max-w-sm text-sm text-muted-foreground">{hasZones ? 'Try a different search or clear the filters.' : 'Add your first domain to start managing DNS records.'}</p>
+      {hasZones && <Button variant="outline" className="mt-6" onClick={onClear}>Clear filters</Button>}
+    </div>
+  );
+}

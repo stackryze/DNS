@@ -1,902 +1,467 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getZoneDetails, getZoneRecords, addRecord, deleteRecord, deleteZone, verifyZone, verifyOwnership, exportZone } from '../services/api';
-import { ArrowLeft, Plus, Trash2, Globe, AlertCircle, Loader2, Copy, ShieldCheck, AlertTriangle, MoreHorizontal, Check, X, RotateCw, Download, KeyRound, ShieldOff, Mail } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import debounce from 'lodash.debounce';
-import { useToast } from '../components/Toast';
-import ConfirmDialog from '../components/ConfirmDialog';
+import { ArrowLeft, Plus, Trash2, Globe, AlertCircle, Loader2, Copy, Check, AlertTriangle, Download, ShieldOff, RotateCw, MoreHorizontal, Pencil, X } from 'lucide-react';
+import { toast } from 'sonner';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Badge } from '../components/ui/badge';
+import { Skeleton } from '../components/ui/skeleton';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../components/ui/dialog';
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '../components/ui/dropdown-menu';
+import { Tooltip, TooltipTrigger, TooltipContent } from '../components/ui/tooltip';
+import { cn } from '../lib/utils';
 
-// Helper to remove trailing dot from FQDN for display
-const stripTrailingDot = (str) => {
-    if (!str) return str;
-    return str.endsWith('.') ? str.slice(0, -1) : str;
+const stripDot = (s) => (s && s.endsWith('.') ? s.slice(0, -1) : s);
+
+const TYPE_TONE = {
+  A: 'text-primary', AAAA: 'text-primary', CNAME: 'text-foreground', NS: 'text-foreground',
+  MX: 'text-warning', TXT: 'text-muted-foreground', SRV: 'text-primary', CAA: 'text-success', SOA: 'text-muted-foreground',
 };
 
-const RecordBadge = ({ type }) => {
-    const colors = {
-        A: 'bg-[#003666] text-[#6FB2E8] border-[#004B8D]',
-        AAAA: 'bg-[#2A0F45] text-[#C485FB] border-[#441970]',
-        CNAME: 'bg-[#0F2D1F] text-[#4CC495] border-[#16432E]',
-        TXT: 'bg-[#2B2B2B] text-[#A6A6A6] border-[#404040]',
-        MX: 'bg-[#451E11] text-[#F99B7D] border-[#662C19]',
-        SRV: 'bg-[#1E3A8A] text-[#93C5FD] border-[#1D4ED8]',
-        CAA: 'bg-[#065F46] text-[#6EE7B7] border-[#047857]',
-        NS: 'bg-[#2B2B2B] text-[#E0E0E0] border-[#404040]',
-        SOA: 'bg-[#1A1A1A] text-[#808080] border-[#333]'
-    };
-    return (
-        <span className={`w-14 text-center inline-block py-0.5 rounded text-[10px] font-mono font-bold border ${colors[type] || 'bg-gray-800 text-gray-400 border-gray-700'}`}>
-            {type}
-        </span>
-    );
+function RecordTypeBadge({ type }) {
+  return <span className={cn('inline-flex w-14 justify-center rounded-md border border-border bg-secondary py-0.5 font-mono text-[11px] font-semibold', TYPE_TONE[type] || 'text-foreground')}>{type}</span>;
+}
+
+const STATUS = {
+  active: { label: 'Active', variant: 'success', dot: 'bg-success' },
+  suspended: { label: 'Suspended', variant: 'destructive', dot: 'bg-destructive' },
+  pending_ownership: { label: 'Verify ownership', variant: 'warning', dot: 'bg-warning' },
+  pending_verification: { label: 'Pending setup', variant: 'warning', dot: 'bg-warning' },
+  pending: { label: 'Pending setup', variant: 'warning', dot: 'bg-warning' },
 };
+function StatusBadge({ status }) {
+  const s = STATUS[status] || { label: status, variant: 'default', dot: 'bg-muted-foreground' };
+  return <Badge variant={s.variant}><span className={cn('h-1.5 w-1.5 rounded-full', s.dot)} />{s.label}</Badge>;
+}
 
-const ZoneDetails = () => {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const toast = useToast();
-    const [zone, setZone] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+function CopyButton({ value }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+          className="rounded p-1 text-muted-foreground opacity-0 transition-all hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring group-hover:opacity-100"
+        >
+          {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>{copied ? 'Copied' : 'Copy'}</TooltipContent>
+    </Tooltip>
+  );
+}
 
-    // Confirmation Dialog State
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+const TTL_OPTIONS = [
+  { v: '3600', l: '1 hour' }, { v: '7200', l: '2 hours' }, { v: '21600', l: '6 hours' },
+  { v: '43200', l: '12 hours' }, { v: '86400', l: '1 day' }, { v: '604800', l: '1 week' },
+];
+const EDITABLE_TYPES = ['A', 'AAAA', 'CNAME', 'TXT', 'MX', 'SRV', 'CAA'];
 
-    // Records State
-    const [records, setRecords] = useState([]);
-    const [loadingRecords, setLoadingRecords] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
+function decompose(type, content) {
+  const base = { content, mxPriority: '10', srvPriority: '10', srvWeight: '5', srvPort: '443', caaFlags: '0', caaTag: 'issue' };
+  if (type === 'MX') { const [p, ...rest] = content.split(/\s+/); return { ...base, mxPriority: p, content: rest.join(' ') }; }
+  if (type === 'SRV') { const [p, w, port, ...rest] = content.split(/\s+/); return { ...base, srvPriority: p, srvWeight: w, srvPort: port, content: rest.join(' ') }; }
+  if (type === 'CAA') { const m = content.match(/^(\d+)\s+(\S+)\s+"?(.*?)"?$/); if (m) return { ...base, caaFlags: m[1], caaTag: m[2], content: m[3] }; }
+  if (type === 'TXT') return { ...base, content: content.replace(/^"|"$/g, '') };
+  return base;
+}
 
-    // Verification State
-    const [verifying, setVerifying] = useState(false);
-    const [verificationError, setVerificationError] = useState(null);
-    const [verificationDetails, setVerificationDetails] = useState(null);
+function RecordForm({ zoneName, initial, onSubmit, submitting }) {
+  const isEdit = !!initial;
+  const [type, setType] = useState(initial ? initial.type : 'A');
+  const [name, setName] = useState(initial ? (stripDot(initial.name).replace(`.${stripDot(zoneName)}`, '') || '@') : '@');
+  const [ttl, setTtl] = useState(initial ? String(initial.ttl || 3600) : '3600');
+  const [fields, setFields] = useState(() => (initial ? decompose(initial.type, stripDot(initial.content)) : decompose('A', '')));
+  const setField = (k, v) => setFields((f) => ({ ...f, [k]: v }));
 
-    // Ownership Verification State
-    const [verifyingOwnership, setVerifyingOwnership] = useState(false);
-    const [ownershipError, setOwnershipError] = useState(null);
-    const [codeCopied, setCodeCopied] = useState(false);
+  const validate = () => {
+    const c = fields.content.trim();
+    if (!name || !c) return 'Name and content are required.';
+    if (name.includes('*')) return 'Wildcard records are not allowed.';
+    if (parseInt(ttl) < 3600) return 'TTL must be at least 1 hour.';
+    if (type === 'A' && !/^(?:(?:25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d?\d)$/.test(c)) return 'Invalid IPv4 address.';
+    if (type === 'AAAA' && !c.includes(':')) return 'Invalid IPv6 address.';
+    if (type === 'MX') { const p = +fields.mxPriority; if (isNaN(p) || p < 0 || p > 65535) return 'MX priority must be 0–65535.'; }
+    if (type === 'SRV') { const [p, w, po] = [+fields.srvPriority, +fields.srvWeight, +fields.srvPort]; if ([p, w].some((n) => isNaN(n) || n < 0 || n > 65535)) return 'SRV priority/weight must be 0–65535.'; if (isNaN(po) || po < 1 || po > 65535) return 'SRV port must be 1–65535.'; }
+    if (type === 'CAA') { const fl = +fields.caaFlags; if (isNaN(fl) || fl < 0 || fl > 255) return 'CAA flags must be 0–255.'; if (!['issue', 'issuewild', 'iodef'].includes(fields.caaTag)) return 'CAA tag must be issue, issuewild, or iodef.'; }
+    return null;
+  };
+  const compose = () => {
+    const c = fields.content.trim();
+    if (type === 'MX') return `${fields.mxPriority} ${c}`;
+    if (type === 'SRV') return `${fields.srvPriority} ${fields.srvWeight} ${fields.srvPort} ${c}`;
+    if (type === 'CAA') return `${fields.caaFlags} ${fields.caaTag} "${c}"`;
+    if (type === 'TXT') return c.startsWith('"') ? c : `"${c}"`;
+    return c;
+  };
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const err = validate();
+    if (err) { toast.error(err); return; }
+    onSubmit({ type, name, content: compose(), ttl: parseInt(ttl) }, initial);
+  };
 
-    // New Record State
-    const [recordType, setRecordType] = useState('A');
-    const [recordName, setRecordName] = useState('@');
-    const [recordContent, setRecordContent] = useState('');
-    const [mxPriority, setMxPriority] = useState('10'); // Default MX priority
-    const [srvPriority, setSrvPriority] = useState('10');
-    const [srvWeight, setSrvWeight] = useState('5');
-    const [srvPort, setSrvPort] = useState('443');
-    const [caaFlags, setCaaFlags] = useState('0');
-    const [caaTag, setCaaTag] = useState('issue');
-    const [recordTTL, setRecordTTL] = useState(3600); // Default: 1 hour (minimum allowed)
-    const [adding, setAdding] = useState(false);
-    const [deleting, setDeleting] = useState(null); // ID or name of record being deleted
-    const [deletingZone, setDeletingZone] = useState(false);
+  const fqdn = name && name !== '@' ? `${name}.${stripDot(zoneName)}` : stripDot(zoneName);
 
-    // UI State
-    const [isAddMode, setIsAddMode] = useState(false);
-
-    useEffect(() => {
-        fetchZoneMetadata();
-        fetchRecords(''); // Initial load
-    }, [id]);
-
-    // Debounced search
-    const debouncedSearch = useCallback(
-        debounce((query) => {
-            fetchRecords(query);
-        }, 500),
-        [id]
-    );
-
-    useEffect(() => {
-        debouncedSearch(searchQuery);
-        return () => debouncedSearch.cancel();
-    }, [searchQuery, debouncedSearch]);
-
-    const fetchZoneMetadata = async () => {
-        try {
-            // Fetch zone metadata WITHOUT records (rrsets=false)
-            // This ensures instant loading for the page header/status
-            const data = await getZoneDetails(id, false);
-            setZone(data);
-        } catch (err) {
-            setError('Failed to fetch zone details');
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchRecords = async (query = searchQuery) => {
-        setLoadingRecords(true); 
-        try {
-            const data = await getZoneRecords(id, query);
-            setRecords(data);
-        } catch (err) {
-            console.error("Failed to fetch records:", err);
-            // Don't block UI mostly, just show empty
-        } finally {
-            setLoadingRecords(false);
-        }
-    };
-
-    const handleVerifyZone = async () => {
-        setVerifying(true);
-        setVerificationError(null);
-        setVerificationDetails(null);
-        try {
-            await verifyZone(id);
-            toast.success('Zone verified successfully!');
-            fetchZoneMetadata();
-        } catch (err) {
-            const msg = err.response?.data?.error || err.message;
-            setVerificationError(msg);
-            if (err.response?.data?.current) {
-                setVerificationDetails(err.response.data);
-            }
-        } finally {
-            setVerifying(false);
-        }
-    };
-
-    const handleExportZone = async () => {
-        try {
-            await exportZone(id, zone.name);
-            toast.success(`Zone ${zone.name} exported successfully!`);
-        } catch (err) {
-            toast.error('Failed to export zone: ' + (err.response?.data?.error || err.message));
-        }
-    };
-
-    const handleVerifyOwnership = async () => {
-        setVerifyingOwnership(true);
-        setOwnershipError(null);
-        try {
-            await verifyOwnership(id);
-            toast.success('Ownership verified successfully!');
-            fetchZoneMetadata();
-        } catch (err) {
-            const msg = err.response?.data?.error || err.message;
-            setOwnershipError(msg);
-            if (err.response?.data?.hint) {
-                setOwnershipError(msg + ' ' + err.response.data.hint);
-            }
-        } finally {
-            setVerifyingOwnership(false);
-        }
-    };
-
-    const handleCopyCode = (code) => {
-        navigator.clipboard.writeText(code);
-        setCodeCopied(true);
-        toast.success('Verification code copied!');
-        setTimeout(() => setCodeCopied(false), 2000);
-    };
-
-    const handleAddRecord = async (e) => {
-        e.preventDefault();
-
-        // Client-side validation
-        if (!recordName || !recordContent) {
-            toast.error('Name and content are required');
-            return;
-        }
-
-        // Wildcard check
-        if (recordName.includes('*')) {
-            toast.warning('Wildcard records are not allowed');
-            return;
-        }
-
-        // TTL validation (minimum 1 hour)
-        if (parseInt(recordTTL) < 3600) {
-            toast.error('TTL must be at least 1 hour (3600 seconds)');
-            return;
-        }
-
-        // Type-specific validation
-        if (recordType === 'A') {
-            const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-            if (!ipv4Regex.test(recordContent.trim())) {
-                toast.error('Invalid IPv4 address format');
-                return;
-            }
-        } else if (recordType === 'AAAA') {
-            // Basic IPv6 validation
-            if (!recordContent.includes(':')) {
-                toast.error('Invalid IPv6 address format');
-                return;
-            }
-        } else if (recordType === 'MX') {
-            const priority = parseInt(mxPriority);
-            if (isNaN(priority) || priority < 0 || priority > 65535) {
-                toast.error('MX priority must be a number between 0 and 65535');
-                return;
-            }
-        } else if (recordType === 'SRV') {
-            const priority = parseInt(srvPriority);
-            const weight = parseInt(srvWeight);
-            const port = parseInt(srvPort);
-
-            if (isNaN(priority) || priority < 0 || priority > 65535) {
-                toast.error('SRV priority must be a number between 0 and 65535');
-                return;
-            }
-
-            if (isNaN(weight) || weight < 0 || weight > 65535) {
-                toast.error('SRV weight must be a number between 0 and 65535');
-                return;
-            }
-
-            if (isNaN(port) || port < 1 || port > 65535) {
-                toast.error('SRV port must be a number between 1 and 65535');
-                return;
-            }
-        } else if (recordType === 'CAA') {
-            const flags = parseInt(caaFlags);
-            if (isNaN(flags) || flags < 0 || flags > 255) {
-                toast.error('CAA flags must be a number between 0 and 255');
-                return;
-            }
-            if (!['issue', 'issuewild', 'iodef'].includes(caaTag)) {
-                toast.error('CAA tag must be issue, issuewild, or iodef');
-                return;
-            }
-        }
-
-        setAdding(true);
-        try {
-            // For MX records, combine priority with content
-            // For TXT records, auto-wrap in quotes if not already quoted
-            const txtContent = recordType === 'TXT' && !recordContent.startsWith('"')
-                ? `"${recordContent}"`
-                : recordContent;
-            const finalContent =
-                recordType === 'MX'
-                    ? `${mxPriority} ${recordContent}`
-                    : recordType === 'SRV'
-                    ? `${srvPriority} ${srvWeight} ${srvPort} ${recordContent}`
-                    : recordType === 'CAA'
-                    ? `${caaFlags} ${caaTag} "${recordContent}"`
-                    : recordType === 'TXT'
-                    ? txtContent
-                    : recordContent;
-
-            await addRecord(id, {
-                type: recordType,
-                name: recordName,
-                content: finalContent,
-                ttl: recordTTL
-            });
-            // Reset form
-            setRecordName('@');
-            setRecordContent('');
-            setMxPriority('10');
-            setSrvPriority('10');
-            setSrvWeight('5');
-            setSrvPort('443');
-            setCaaFlags('0');
-            setCaaTag('issue');
-            setIsAddMode(false);
-
-            toast.success(`${recordType} record added successfully`);
-            // Refresh records AND update count in metadata (if needed)
-            fetchRecords(searchQuery);
-            // Optional: fetchZoneMetadata() to update record count if backend updates it
-        } catch (err) {
-            toast.error('Failed to add record: ' + (err.response?.data?.error || err.message));
-        } finally {
-            setAdding(false);
-        }
-    };
-
-    const handleDeleteRecord = async (rName, rType, rContent) => {
-        setConfirmDialog({
-            isOpen: true,
-            title: 'Delete Record',
-            message: `Are you sure you want to delete this ${rType} record?`,
-            onConfirm: async () => {
-                setDeleting(`${rName}-${rType}-${rContent}`);
-                try {
-                    await deleteRecord(id, rName, rType, rContent);
-                    toast.success(`${rType} record deleted successfully`);
-                    fetchRecords(searchQuery);
-                } catch (err) {
-                    toast.error('Failed to delete record: ' + (err.response?.data?.error || err.message));
-                } finally {
-                    setDeleting(null);
-                }
-            }
-        });
-    };
-
-    const handleDeleteZone = async () => {
-        setConfirmDialog({
-            isOpen: true,
-            title: 'Delete Zone',
-            message: `Are you absolutely sure you want to delete "${zone.name}"? This action cannot be undone and will permanently delete all DNS records.`,
-            confirmText: 'Delete Zone',
-            onConfirm: async () => {
-                setDeletingZone(true);
-                try {
-                    await deleteZone(id);
-                    toast.success('Zone deleted successfully');
-                    navigate('/dashboard');
-                } catch (err) {
-                    toast.error('Failed to delete zone: ' + (err.response?.data?.error || err.message));
-                    setDeletingZone(false);
-                }
-            }
-        });
-    };
-
-    if (loading) return (
-        <div className="flex justify-center items-center min-h-[50vh]">
-            <Loader2 className="w-10 h-10 text-[#F48120] animate-spin" />
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="space-y-1.5">
+          <Label>Type</Label>
+          <Select value={type} onValueChange={(v) => { setType(v); setFields(decompose(v, '')); }} disabled={isEdit}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{EDITABLE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+          </Select>
         </div>
-    );
-
-    if (error) return (
-        <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
-            <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-            <h2 className="text-xl font-bold text-white">Unable to load zone</h2>
-            <p className="text-gray-400 mt-2">{error}</p>
-            <Link to="/dashboard" className="mt-6 text-[#F48120] hover:underline font-medium">Return to Dashboard</Link>
+        <div className="col-span-2 space-y-1.5">
+          <Label htmlFor="rec-name">Name</Label>
+          <Input id="rec-name" className="font-mono" placeholder="@ or subdomain" value={name === '@' ? '' : name} onChange={(e) => setName(e.target.value || '@')} />
         </div>
-    );
+        <div className="space-y-1.5">
+          <Label>TTL</Label>
+          <Select value={ttl} onValueChange={setTtl}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{TTL_OPTIONS.map((o) => <SelectItem key={o.v} value={o.v}>{o.l}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
 
-    if (!zone) return <div className="text-white text-center mt-20">Zone not found</div>;
+      <p className="truncate font-mono text-xs text-muted-foreground"><span className="text-muted-foreground/60">FQDN: </span>{fqdn}</p>
 
-    const isPending = zone.status === 'pending_verification' || zone.status === 'pending';
-    const isPendingOwnership = zone.status === 'pending_ownership';
-    const isSuspended = zone.status === 'suspended';
-    const isBlocked = isPending || isPendingOwnership || isSuspended;
+      {type === 'MX' && (
+        <div className="space-y-1.5"><Label htmlFor="mx-pri">Priority</Label><Input id="mx-pri" className="font-mono" value={fields.mxPriority} onChange={(e) => setField('mxPriority', e.target.value)} /></div>
+      )}
+      {type === 'SRV' && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1.5"><Label>Priority</Label><Input className="font-mono" value={fields.srvPriority} onChange={(e) => setField('srvPriority', e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Weight</Label><Input className="font-mono" value={fields.srvWeight} onChange={(e) => setField('srvWeight', e.target.value)} /></div>
+          <div className="space-y-1.5"><Label>Port</Label><Input className="font-mono" value={fields.srvPort} onChange={(e) => setField('srvPort', e.target.value)} /></div>
+        </div>
+      )}
+      {type === 'CAA' && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5"><Label>Flags</Label><Input className="font-mono" value={fields.caaFlags} onChange={(e) => setField('caaFlags', e.target.value)} /></div>
+          <div className="space-y-1.5">
+            <Label>Tag</Label>
+            <Select value={fields.caaTag} onValueChange={(v) => setField('caaTag', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="issue">issue</SelectItem><SelectItem value="issuewild">issuewild</SelectItem><SelectItem value="iodef">iodef</SelectItem></SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
-    return (
-        <>
-            <ConfirmDialog
-                isOpen={confirmDialog.isOpen}
-                onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
-                onConfirm={confirmDialog.onConfirm}
-                title={confirmDialog.title}
-                message={confirmDialog.message}
-                confirmText={confirmDialog.confirmText}
-            />
-        <div className="max-w-7xl mx-auto space-y-6 pb-20">
-            {/* Header */}
-            <div className="flex flex-col gap-4 border-b border-white/5 pb-4 md:pb-6">
-                <div className="flex items-center gap-3 md:gap-4">
-                    <Link to="/dashboard" className="w-9 h-9 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/10 transition-all border border-white/5">
-                        <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
-                    </Link>
-                    <div className="flex-1 min-w-0">
-                        <h1 className="text-lg md:text-2xl font-bold text-white flex items-center gap-2 md:gap-3">
-                            <span className="truncate">{zone.name}</span>
-                            <span className={`text-[9px] md:text-[11px] px-2 md:px-2.5 py-0.5 md:py-1 rounded-md uppercase tracking-wider font-bold shadow-sm whitespace-nowrap ${zone.status === 'active'
-                                ? 'bg-[#10B981] text-black'
-                                : zone.status === 'pending_ownership'
-                                ? 'bg-[#F59E0B] text-black'
-                                : zone.status === 'suspended'
-                                ? 'bg-red-500 text-white'
-                                : 'bg-[#F48120] text-black'
-                                }`}>
-                                {zone.status === 'pending_verification' ? 'Pending' : zone.status === 'pending_ownership' ? 'Verify Ownership' : zone.status === 'suspended' ? 'Suspended' : zone.status}
-                            </span>
-                        </h1>
-                    </div>
-                </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="rec-content">{type === 'CAA' ? 'Value' : 'Content'}</Label>
+        <Input id="rec-content" className="font-mono" placeholder={type === 'A' ? '192.0.2.1' : type === 'CNAME' ? 'target.example.com' : 'value'} value={fields.content} onChange={(e) => setField('content', e.target.value)} />
+      </div>
 
-                <div className="flex items-center gap-2 md:gap-3">
-                    <button
-                        onClick={handleDeleteZone}
-                        disabled={deletingZone}
-                        className="flex-1 md:flex-none bg-red-600 hover:bg-red-700 text-white px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-red-900/20 border border-red-500/50"
-                    >
-                        {deletingZone ? <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" /> : <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />}
-                        <span className="hidden sm:inline">{deletingZone ? 'Deleting...' : 'Delete Zone'}</span>
-                        <span className="sm:hidden">Delete</span>
-                    </button>
-                    <button 
-                        onClick={handleExportZone}
-                        className="flex-1 md:flex-none bg-[#38BDF8] hover:bg-[#38BDF8]/90 text-white px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold transition-all shadow-lg shadow-[#38BDF8]/20 flex items-center justify-center gap-2"
-                    >
-                        <Download className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                        <span className="hidden sm:inline">Export Zone</span>
-                        <span className="sm:hidden">Export</span>
-                    </button>
-                </div>
+      <DialogFooter>
+        <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+        <Button type="submit" disabled={submitting}>{submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{isEdit ? 'Save changes' : 'Add record'}</Button>
+      </DialogFooter>
+    </form>
+  );
+}
+
+function RecordFormDialog({ open, onOpenChange, zoneName, initial, onSubmit, submitting }) {
+  const isEdit = !!initial;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? 'Edit record' : 'Add DNS record'}</DialogTitle>
+          <DialogDescription>{isEdit ? 'Saving replaces the existing record.' : 'Create a new record for this zone.'}</DialogDescription>
+        </DialogHeader>
+        {open && <RecordForm zoneName={zoneName} initial={initial} onSubmit={onSubmit} submitting={submitting} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Callout({ tone = 'warning', icon: Icon, title, children }) {
+  const tones = { warning: 'border-warning/25 bg-warning/5', destructive: 'border-destructive/25 bg-destructive/5' };
+  const iconTone = { warning: 'text-warning', destructive: 'text-destructive' };
+  return (
+    <div className={cn('rounded-xl border p-6', tones[tone])}>
+      <div className="mb-3 flex items-center gap-2"><Icon className={cn('h-5 w-5', iconTone[tone])} /><h3 className="text-base font-semibold text-foreground">{title}</h3></div>
+      {children}
+    </div>
+  );
+}
+
+export default function ZoneDetails() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [zone, setZone] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [records, setRecords] = useState([]);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [verifying, setVerifying] = useState(false);
+  const [verificationDetails, setVerificationDetails] = useState(null);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const [recordDialog, setRecordDialog] = useState({ open: false, initial: null });
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingKey, setDeletingKey] = useState(null);
+  const [deletingZone, setDeletingZone] = useState(false);
+
+  const fetchZoneMetadata = useCallback(async () => {
+    try { setZone(await getZoneDetails(id, false)); }
+    catch (err) { setError('Failed to fetch zone details'); console.error(err); }
+    finally { setLoading(false); }
+  }, [id]);
+
+  const fetchRecords = useCallback(async (query = '') => {
+    setLoadingRecords(true);
+    try { setRecords((await getZoneRecords(id, query)) || []); }
+    catch (err) { console.error('Failed to fetch records:', err); }
+    finally { setLoadingRecords(false); }
+  }, [id]);
+
+  useEffect(() => { fetchZoneMetadata(); fetchRecords(''); }, [fetchZoneMetadata, fetchRecords]);
+  useEffect(() => { const t = setTimeout(() => fetchRecords(searchQuery), 400); return () => clearTimeout(t); }, [searchQuery, fetchRecords]);
+
+  const handleVerifyZone = async () => {
+    setVerifying(true); setVerificationDetails(null);
+    try { await verifyZone(id); toast.success('Zone verified successfully'); fetchZoneMetadata(); }
+    catch (err) { const d = err.response?.data; toast.error(d?.error || err.message); if (d?.current) setVerificationDetails(d); }
+    finally { setVerifying(false); }
+  };
+  const handleVerifyOwnership = async () => {
+    setVerifying(true);
+    try { await verifyOwnership(id); toast.success('Ownership verified successfully'); fetchZoneMetadata(); }
+    catch (err) { const d = err.response?.data; toast.error((d?.error || err.message) + (d?.hint ? ` ${d.hint}` : '')); }
+    finally { setVerifying(false); }
+  };
+  const handleExportZone = async () => {
+    try { await exportZone(id, zone.name); toast.success(`Exported ${zone.name}`); }
+    catch (err) { toast.error('Failed to export: ' + (err.response?.data?.error || err.message)); }
+  };
+  const handleCopyCode = (code) => { navigator.clipboard.writeText(code); setCodeCopied(true); toast.success('Verification code copied'); setTimeout(() => setCodeCopied(false), 2000); };
+
+  const submitRecord = async (payload, original) => {
+    setSubmitting(true);
+    try {
+      await addRecord(id, payload);
+      if (original) await deleteRecord(id, original.name, original.type, original.content).catch(() => {});
+      toast.success(original ? 'Record updated' : `${payload.type} record added`);
+      setRecordDialog({ open: false, initial: null });
+      fetchRecords(searchQuery);
+    } catch (err) { toast.error('Failed to save record: ' + (err.response?.data?.error || err.message)); }
+    finally { setSubmitting(false); }
+  };
+
+  const deleteOne = async (row) => {
+    const key = `${row.name}-${row.type}-${row.content}`;
+    setDeletingKey(key);
+    const snapshot = records;
+    setRecords((prev) => prev.map((rr) => (rr.name === row.name && rr.type === row.type ? { ...rr, records: rr.records.filter((r) => r.content !== row.content) } : rr)).filter((rr) => rr.records.length > 0));
+    try { await deleteRecord(id, row.name, row.type, row.content); toast.success(`${row.type} record deleted`); }
+    catch (err) { setRecords(snapshot); toast.error('Failed to delete: ' + (err.response?.data?.error || err.message)); }
+    finally { setDeletingKey(null); }
+  };
+
+  const handleDeleteZone = async () => {
+    setDeletingZone(true);
+    try { await deleteZone(id); toast.success('Zone deleted'); navigate('/dashboard'); }
+    catch (err) { toast.error('Failed to delete zone: ' + (err.response?.data?.error || err.message)); setDeletingZone(false); }
+  };
+
+  const rows = useMemo(() => {
+    const flat = (records || []).flatMap((rr) => (rr.records || []).map((r) => ({ name: rr.name, type: rr.type, ttl: rr.ttl, content: r.content })));
+    return typeFilter === 'all' ? flat : flat.filter((r) => r.type === typeFilter);
+  }, [records, typeFilter]);
+  const availableTypes = useMemo(() => Array.from(new Set((records || []).map((rr) => rr.type))).sort(), [records]);
+
+  if (loading) return <div className="flex min-h-[50vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (error) return (
+    <div className="flex min-h-[50vh] flex-col items-center justify-center text-center">
+      <AlertCircle className="mb-4 h-10 w-10 text-destructive" />
+      <h2 className="text-xl font-semibold text-foreground">Unable to load zone</h2>
+      <p className="mt-2 text-muted-foreground">{error}</p>
+      <Button asChild variant="outline" className="mt-6"><Link to="/dashboard">Return to dashboard</Link></Button>
+    </div>
+  );
+  if (!zone) return <div className="mt-20 text-center text-foreground">Zone not found</div>;
+
+  const isPending = zone.status === 'pending_verification' || zone.status === 'pending';
+  const isPendingOwnership = zone.status === 'pending_ownership';
+  const isSuspended = zone.status === 'suspended';
+  const isBlocked = isPending || isPendingOwnership || isSuspended;
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Link to="/dashboard" className="flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground" aria-label="Back to dashboard"><ArrowLeft className="h-4 w-4" /></Link>
+          <div className="min-w-0">
+            <h1 className="truncate font-mono text-xl font-semibold text-foreground">{stripDot(zone.name)}</h1>
+            <div className="mt-1"><StatusBadge status={zone.status} /></div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleExportZone}><Download className="h-4 w-4" /> Export</Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="Zone actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleExportZone}><Download /> Export zone file</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <AlertDialog>
+                <AlertDialogTrigger asChild><DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive"><Trash2 /> Delete zone</DropdownMenuItem></AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete this zone?</AlertDialogTitle>
+                    <AlertDialogDescription>This permanently deletes <span className="font-mono text-foreground">{stripDot(zone.name)}</span> and all its DNS records. This cannot be undone.</AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteZone} disabled={deletingZone}>{deletingZone ? 'Deleting…' : 'Delete zone'}</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {isPendingOwnership && zone.ownershipCode && (
+        <Callout tone="warning" icon={AlertTriangle} title="Verify domain ownership">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">{stripDot(zone.name)}</span> is a platform subdomain. Copy the code below and add it on the <a href="https://domain.stackryze.com/my-domains" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Domains platform</a>.</p>
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2">
+                <code className="truncate font-mono text-sm text-primary">{zone.ownershipCode}</code>
+                <Button size="sm" variant="secondary" onClick={() => handleCopyCode(zone.ownershipCode)}>{codeCopied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}</Button>
+              </div>
+              <Button onClick={handleVerifyOwnership} disabled={verifying}>{verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Verify ownership</Button>
             </div>
-
-            {/* Ownership Verification Banner (Platform Subdomains) */}
-            <AnimatePresence>
-                {isPendingOwnership && zone.ownershipCode && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="bg-black/60 backdrop-blur-xl border border-white/10 border-l-4 border-l-[#F59E0B] p-6 rounded-r-lg shadow-2xl relative z-10 mt-6 backdrop-brightness-75"
-                    >
-                        <div className="flex flex-col gap-6">
-                            <div className="space-y-4 w-full">
-                                <div>
-                                    <h3 className="text-[#F59E0B] font-bold text-base flex items-center gap-2 mb-2">
-                                        <KeyRound className="w-5 h-5" />
-                                        Ownership Verification Required
-                                    </h3>
-                                    <p className="text-gray-300 text-sm max-w-2xl leading-relaxed">
-                                        <span className="font-semibold text-white">{zone.name}</span> is a platform subdomain.
-                                        To prove you own this domain, copy the code below and add it on the <a href="https://domain.stackryze.com/my-domains" target="_blank" rel="noopener noreferrer" className="text-[#38BDF8] hover:underline font-semibold">Domains platform</a>.
-                                    </p>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <h4 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Your Verification Code</h4>
-                                    <div
-                                        onClick={() => handleCopyCode(zone.ownershipCode)}
-                                        className="flex items-center justify-between bg-[#F59E0B]/10 px-4 py-3 rounded-lg text-sm font-mono text-[#F59E0B] border border-[#F59E0B]/30 group cursor-pointer hover:bg-[#F59E0B]/20 transition-colors"
-                                    >
-                                        <span className="break-all">{zone.ownershipCode}</span>
-                                        {codeCopied ? (
-                                            <Check className="w-4 h-4 ml-3 flex-shrink-0 text-[#10B981]" />
-                                        ) : (
-                                            <Copy className="w-4 h-4 ml-3 flex-shrink-0 opacity-50 group-hover:opacity-100" />
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                                    <h4 className="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-3">Steps to Verify</h4>
-                                    <ol className="text-sm text-gray-300 space-y-2 list-decimal list-inside">
-                                        <li>Copy the verification code above</li>
-                                        <li>Go to <a href="https://domain.stackryze.com/my-domains" target="_blank" rel="noopener noreferrer" className="text-[#38BDF8] hover:underline">domain.stackryze.com</a></li>
-                                        <li>Open your domain <span className="text-white font-semibold">{zone.name}</span> → Manage</li>
-                                        <li>Click <span className="text-[#F59E0B] font-semibold">DNS Verification</span> and paste the code</li>
-                                        <li>Come back here and click <span className="text-[#F59E0B] font-semibold">Verify Ownership</span></li>
-                                    </ol>
-                                </div>
-                            </div>
-
-                            <button
-                                onClick={handleVerifyOwnership}
-                                disabled={verifyingOwnership}
-                                className="bg-[#F59E0B] hover:bg-[#F59E0B]/90 text-black px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap shadow-lg shadow-amber-900/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] self-start"
-                            >
-                                {verifyingOwnership ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
-                                {verifyingOwnership ? 'Verifying...' : 'Verify Ownership'}
-                            </button>
-                        </div>
-                        {ownershipError && (
-                            <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-sm flex items-start gap-2">
-                                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                                <span>{ownershipError}</span>
-                            </div>
-                        )}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Verification Banner */}
-            <AnimatePresence>
-                {isPending && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="bg-black/60 backdrop-blur-xl border border-white/10 border-l-4 border-l-[#F48120] p-6 rounded-r-lg shadow-2xl relative z-10 mt-6 backdrop-brightness-75"
-                    >
-                        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-                            <div className="space-y-4 w-full">
-                                <div>
-                                    <h3 className="text-[#F48120] font-bold text-base flex items-center gap-2 mb-2">
-                                        <AlertTriangle className="w-5 h-5" />
-                                        Complete your setup
-                                    </h3>
-                                    <p className="text-gray-300 text-sm max-w-2xl leading-relaxed">
-                                        <span className="font-semibold text-white">{zone.name}</span> is not yet active.
-                                        Replace your current nameservers with Stackryze nameservers.
-                                    </p>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    {/* Required NS */}
-                                    <div>
-                                        <h4 className="text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-wider">Required Nameservers</h4>
-                                        <div className="flex flex-col gap-2">
-                                            {['ns1.stackryze.com', 'ns2.stackryze.com', 'ns3.stackryze.com'].map(ns => (
-                                                <div key={ns} className="flex items-center justify-between bg-[#10B981]/10 px-3 py-2 rounded text-sm font-mono text-[#10B981] border border-[#10B981]/20 group cursor-pointer hover:bg-[#10B981]/20 transition-colors" onClick={() => navigator.clipboard.writeText(ns)}>
-                                                    {ns}
-                                                    <Copy className="w-3.5 h-3.5 opacity-50 group-hover:opacity-100" />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Current NS (if failed) */}
-                                    {verificationDetails?.current && (
-                                        <div>
-                                            <h4 className="text-[10px] uppercase font-bold text-red-400 mb-2 tracking-wider">Current Nameservers</h4>
-                                            <div className="flex flex-col gap-2">
-                                                {verificationDetails.current.length > 0 ? (
-                                                    verificationDetails.current.map(ns => (
-                                                        <div key={ns} className="flex items-center gap-2 bg-red-500/10 px-3 py-2 rounded text-sm font-mono text-red-300 border border-red-500/20">
-                                                            <X className="w-3.5 h-3.5" />
-                                                            {ns}
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <div className="text-gray-500 text-sm italic py-2">No nameservers found</div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <button
-                                onClick={handleVerifyZone}
-                                disabled={verifying}
-                                className="bg-[#F48120] hover:bg-[#F48120]/90 text-black px-6 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 whitespace-nowrap shadow-lg shadow-orange-900/20 transition-all transform hover:scale-[1.02] active:scale-[0.98] mt-2"
-                            >
-                                {verifying ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Check Nameservers'}
-                            </button>
-                        </div>
-                        {verificationError && !verificationDetails && (
-                            <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded text-red-400 text-sm flex items-center gap-2">
-                                <AlertCircle className="w-4 h-4" />
-                                {verificationError}
-                            </div>
-                        )}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Suspended Zone Banner */}
-            <AnimatePresence>
-                {isSuspended && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="bg-black/60 backdrop-blur-xl border border-white/10 border-l-4 border-l-red-500 p-6 rounded-r-lg shadow-2xl relative z-10 mt-6 backdrop-brightness-75"
-                    >
-                        <div className="flex flex-col gap-4">
-                            <div className="space-y-3">
-                                <h3 className="text-red-400 font-bold text-base flex items-center gap-2">
-                                    <ShieldOff className="w-5 h-5" />
-                                    Domain Suspended
-                                </h3>
-                                <p className="text-gray-300 text-sm leading-relaxed">
-                                    <span className="font-semibold text-white">{zone.name}</span> has been suspended by an administrator.
-                                    This domain is currently <span className="text-red-400 font-semibold">not resolving</span> and all DNS queries will fail.
-                                </p>
-                            </div>
-
-                            <div className="bg-white/5 border border-white/10 rounded-lg p-4 space-y-3">
-                                <div className="flex items-start gap-3">
-                                    <ShieldCheck className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                                    <div>
-                                        <h4 className="text-white font-semibold text-sm">Your DNS Records are Safe</h4>
-                                        <p className="text-gray-400 text-xs mt-1">
-                                            All your DNS records have been securely backed up. Once the suspension is lifted, 
-                                            your records will be automatically restored exactly as they were.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-                                <div className="flex items-start gap-3">
-                                    <Mail className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
-                                    <div>
-                                        <h4 className="text-white font-semibold text-sm">Think this is an error?</h4>
-                                        <p className="text-gray-400 text-xs mt-1">
-                                            If you believe your domain was suspended in error, please contact our support team at{' '}
-                                            <a href="mailto:support@stackryze.com" className="text-[#38BDF8] hover:underline font-semibold">
-                                                support@stackryze.com
-                                            </a>
-                                            {' '}or join our{' '}
-                                            <a href="https://discord.gg/wr7s97cfM7" target="_blank" rel="noopener noreferrer" className="text-[#5865F2] hover:underline font-semibold">
-                                                Discord server
-                                            </a>
-                                            {' '}with your domain name and account details. We'll review your case as soon as possible.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* DNS Records Section */}
-            <div className={`space-y-4 ${isBlocked ? 'opacity-70 pointer-events-none grayscale-[0.5]' : ''}`}>
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-0 pt-4">
-                    <div>
-                        <h2 className="text-lg md:text-xl font-bold text-white tracking-tight flex items-center gap-2">
-                            <Globe className="w-4 h-4 md:w-5 md:h-5 text-gray-400" />
-                            DNS Records
-                        </h2>
-                        <p className="text-xs text-gray-400 mt-1">
-                            {zone.records_count || 0}/{zone.recordLimit || 200} records
-                            {zone.records_count >= (zone.recordLimit || 200) && (
-                                <span className="text-orange-400 ml-2">• Limit reached - Contact support to increase</span>
-                            )}
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2 md:gap-3">
-                        <button
-                            onClick={() => fetchRecords(searchQuery)}
-                            disabled={loadingRecords}
-                            className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-lg transition-all"
-                            title="Refresh Records"
-                        >
-                            <RotateCw className={`w-4 h-4 ${loadingRecords ? 'animate-spin' : ''}`} />
-                        </button>
-                        <div className="relative group flex-1 md:flex-none">
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search records..."
-                                className="bg-[#0A0A0A] border border-white/10 rounded-lg px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm text-white w-full md:w-64 focus:outline-none focus:border-[#38BDF8] focus:ring-1 focus:ring-[#38BDF8] transition-all placeholder-gray-600 shadow-sm"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-[#171717] border border-white/5 rounded-lg overflow-hidden">
-                    {/* Add Record Bar */}
-                    <div className="p-3 md:p-4 border-b border-white/5 bg-[#1F1F1F]">
-                        {/* Quick Add Record Row */}
-                        <div className="p-3 md:p-4 bg-[#1F1F1F]/50 border-b border-white/5">
-                            <form onSubmit={handleAddRecord} className="flex flex-col gap-3 md:gap-4">
-                                {/* Preview Full Domain Name */}
-                                {recordName && recordName !== '@' && (
-                                    <div className="px-3 py-2 bg-[#0A0A0A] border border-[#38BDF8]/30 rounded-lg">
-                                        <span className="text-[10px] uppercase text-gray-500 font-bold tracking-wider">Full Record Name</span>
-                                        <div className="text-sm font-mono text-[#38BDF8] mt-1">{recordName}.{stripTrailingDot(zone.name)}</div>
-                                    </div>
-                                )}
-                                
-                                <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
-                                    {/* Type */}
-                                    <div className="w-full sm:w-28 md:w-32">
-                                        <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Type</label>
-                                        <select
-                                            value={recordType}
-                                            onChange={(e) => setRecordType(e.target.value)}
-                                            className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white font-bold focus:border-[#38BDF8] focus:outline-none transition-colors cursor-pointer"
-                                        >
-                                            {['A', 'AAAA', 'CNAME', 'TXT', 'MX', 'SRV', 'CAA'].map(t => <option key={t} value={t}>{t}</option>)}
-                                        </select>
-                                    </div>
-
-                                    {/* Name */}
-                                    <div className="flex-1 sm:flex-none sm:w-40 md:w-48 relative">
-                                        <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Name</label>
-                                        <span className="absolute left-3 top-[calc(50%+0.5rem)] -translate-y-1/2 text-gray-500 font-mono text-xs">@</span>
-                                        <input
-                                            type="text"
-                                            value={recordName === '@' ? '' : recordName}
-                                            onChange={(e) => setRecordName(e.target.value || '@')}
-                                            placeholder="name"
-                                            className="w-full bg-[#171717] border border-white/10 rounded-lg pl-8 pr-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none font-mono transition-colors"
-                                        />
-                                    </div>
-
-                                    {/* TTL - Moved to same row on mobile */}
-                                    <div className="w-full sm:w-24 md:w-32">
-                                        <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">TTL</label>
-                                        <select
-                                            value={recordTTL}
-                                            onChange={(e) => setRecordTTL(e.target.value)}
-                                            className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none transition-colors cursor-pointer"
-                                            title="Minimum TTL: 1 hour"
-                                        >
-                                            <option value="3600">1 hr</option>
-                                            <option value="7200">2 hrs</option>
-                                            <option value="21600">6 hrs</option>
-                                            <option value="43200">12 hrs</option>
-                                            <option value="86400">1 day</option>
-                                            <option value="604800">1 week</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                {/* Content - Full width row */}
-                                <div className="flex gap-3 md:gap-4">
-                                    {/* MX Priority Field - Only show for MX records */}
-                                    {recordType === 'MX' && (
-                                        <div className="w-24">
-                                            <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Priority</label>
-                                            <input
-                                                type="number"
-                                                value={mxPriority}
-                                                onChange={(e) => setMxPriority(e.target.value)}
-                                                placeholder="10"
-                                                min="0"
-                                                max="65535"
-                                                className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none font-mono transition-colors"
-                                                title="Priority (0-65535)"
-                                            />
-                                        </div>
-                                    )}
-                                    {/* SRV Fields - Priority, Weight, Port */}
-                                    {recordType === 'SRV' && (
-                                        <>
-                                            <div className="w-24">
-                                                <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Priority</label>
-                                                <input
-                                                    type="number"
-                                                    value={srvPriority}
-                                                    onChange={(e) => setSrvPriority(e.target.value)}
-                                                    placeholder="10"
-                                                    min="0"
-                                                    max="65535"
-                                                    className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none font-mono transition-colors"
-                                                    title="Priority (0-65535)"
-                                                />
-                                            </div>
-                                            <div className="w-24">
-                                                <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Weight</label>
-                                                <input
-                                                    type="number"
-                                                    value={srvWeight}
-                                                    onChange={(e) => setSrvWeight(e.target.value)}
-                                                    placeholder="5"
-                                                    min="0"
-                                                    max="65535"
-                                                    className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none font-mono transition-colors"
-                                                    title="Weight (0-65535)"
-                                                />
-                                            </div>
-                                            <div className="w-24">
-                                                <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Port</label>
-                                                <input
-                                                    type="number"
-                                                    value={srvPort}
-                                                    onChange={(e) => setSrvPort(e.target.value)}
-                                                    placeholder="443"
-                                                    min="1"
-                                                    max="65535"
-                                                    className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none font-mono transition-colors"
-                                                    title="Port (1-65535)"
-                                                />
-                                            </div>
-                                        </>
-                                    )}
-                                    {/* CAA Fields - Flags, Tag */}
-                                    {recordType === 'CAA' && (
-                                        <>
-                                            <div className="w-20">
-                                                <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Flags</label>
-                                                <input
-                                                    type="number"
-                                                    value={caaFlags}
-                                                    onChange={(e) => setCaaFlags(e.target.value)}
-                                                    placeholder="0"
-                                                    min="0"
-                                                    max="255"
-                                                    className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none font-mono transition-colors"
-                                                    title="Flags (0-255, usually 0)"
-                                                />
-                                            </div>
-                                            <div className="w-28">
-                                                <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">Tag</label>
-                                                <select
-                                                    value={caaTag}
-                                                    onChange={(e) => setCaaTag(e.target.value)}
-                                                    className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none transition-colors cursor-pointer"
-                                                >
-                                                    <option value="issue">issue</option>
-                                                    <option value="issuewild">issuewild</option>
-                                                    <option value="iodef">iodef</option>
-                                                </select>
-                                            </div>
-                                        </>
-                                    )}
-                                    <div className="flex-1 relative">
-                                        <label className="text-[10px] uppercase text-gray-500 font-bold tracking-wider mb-1.5 block">{recordType === 'CAA' ? 'Value' : 'Content'}</label>
-                                        <input
-                                            type="text"
-                                            value={recordContent}
-                                            onChange={(e) => setRecordContent(e.target.value)}
-                                            placeholder={
-                                                recordType === 'A' ? '192.0.2.1' :
-                                                recordType === 'AAAA' ? '2001:db8::1' :
-                                                recordType === 'CNAME' ? 'example.com' :
-                                                recordType === 'MX' ? 'mail.example.com' :
-                                                recordType === 'SRV' ? 'target.example.com' :
-                                                recordType === 'CAA' ? 'letsencrypt.org' :
-                                                recordType === 'TXT' ? 'v=spf1 include:_spf.example.com ~all' :
-                                                'content'
-                                            }
-                                            className="w-full bg-[#171717] border border-white/10 rounded-lg px-3 py-2 text-xs md:text-sm text-white focus:border-[#38BDF8] focus:outline-none font-mono transition-colors"
-                                        />
-                                    </div>
-
-                                    {/* Add Button */}
-                                    <button
-                                        type="submit"
-                                        disabled={adding || !recordContent}
-                                        className="bg-[#38BDF8] hover:bg-[#0EA5E9] text-white px-4 md:px-6 py-2 rounded-lg text-xs md:text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-[#38BDF8]/20 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-                                    >
-                                        {adding ? <Loader2 className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" /> : 'Add'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-
-                    {/* Records Table */}
-                    <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[640px]">
-                        <thead>
-                            <tr className="bg-[#1F1F1F] border-b border-white/5 text-[10px] md:text-xs text-gray-500 uppercase">
-                                <th className="px-3 md:px-6 py-2 md:py-3 font-semibold w-20 md:w-24">Type</th>
-                                <th className="px-3 md:px-6 py-2 md:py-3 font-semibold w-32 md:w-48">Name</th>
-                                <th className="px-3 md:px-6 py-2 md:py-3 font-semibold">Content</th>
-                                <th className="px-3 md:px-6 py-2 md:py-3 font-semibold w-20 md:w-32">TTL</th>
-                                <th className="px-3 md:px-6 py-2 md:py-3 font-semibold w-16 md:w-24 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/5">
-                            {(!records || records.length === 0) ? (
-                                <tr>
-                                    <td colSpan="5" className="px-3 md:px-6 py-8 md:py-12 text-center text-gray-500 text-xs md:text-sm">
-                                        {loadingRecords ? (
-                                            <div className="flex items-center justify-center gap-2">
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                Loading records...
-                                            </div>
-                                        ) : (
-                                            searchQuery ? 'No matching records found via Search API.' : 'No DNS records found.'
-                                        )}
-                                    </td>
-                                </tr>
-                            ) : (
-                                records.map((rrset) => (
-                                    <React.Fragment key={`${rrset.name}-${rrset.type}`}>
-                                        {rrset.records.map((record, rIndex) => (
-                                            <tr key={`${rrset.name}-${rrset.type}-${rIndex}`} className="hover:bg-[#1F1F1F] transition-colors group">
-                                                <td className="px-3 md:px-6 py-2 md:py-3 align-top">
-                                                    <RecordBadge type={rrset.type} />
-                                                </td>
-                                                <td className="px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm text-gray-300 font-mono align-top break-all" title={stripTrailingDot(rrset.name)}>
-                                                    {stripTrailingDot(rrset.name)}
-                                                </td>
-                                                <td className="px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm text-gray-300 font-mono align-top break-all">
-                                                    {stripTrailingDot(record.content)}
-                                                </td>
-                                                <td className="px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm text-gray-400 align-top">
-                                                    {rrset.ttl}s
-                                                </td>
-                                                <td className="px-3 md:px-6 py-2 md:py-3 text-right align-top">
-                                                    {rrset.type !== 'SOA' && rrset.type !== 'NS' && (
-                                                        <button
-                                                            onClick={() => handleDeleteRecord(rrset.name, rrset.type, record.content)}
-                                                            disabled={deleting === `${rrset.name}-${rrset.type}-${record.content}`}
-                                                            className="text-red-400 hover:text-red-500 p-2 hover:bg-red-500/10 rounded transition-all disabled:opacity-50"
-                                                            title="Delete"
-                                                        >
-                                                            {deleting === `${rrset.name}-${rrset.type}-${record.content}` ? (
-                                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                            ) : (
-                                                                <Trash2 className="w-4 h-4" />
-                                                            )}
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </React.Fragment>
-                                ))
-                            )}  
-                        </tbody>
-                    </table>
-                    </div>
-                </div>
+            <div className="rounded-lg border border-border bg-background/60 p-4">
+              <h4 className="mb-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Steps</h4>
+              <ol className="list-inside list-decimal space-y-2 text-sm text-muted-foreground">
+                <li>Copy the verification code.</li>
+                <li>Go to <a href="https://domain.stackryze.com/my-domains" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">domain.stackryze.com</a>.</li>
+                <li>Open <span className="font-mono text-foreground">{stripDot(zone.name)}</span> → Manage.</li>
+                <li>Paste the code and confirm, then verify here.</li>
+              </ol>
             </div>
-        </div>
-        </>
-    );
-};
+          </div>
+        </Callout>
+      )}
 
-export default ZoneDetails;
+      {isPending && (
+        <Callout tone="warning" icon={AlertTriangle} title="Complete your setup">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">{stripDot(zone.name)}</span> is not active yet. Replace your current nameservers with Stackryze nameservers.</p>
+              <div className="grid gap-6 sm:grid-cols-2">
+                <div>
+                  <h4 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Required nameservers</h4>
+                  <div className="flex flex-col gap-2">
+                    {['ns1.stackryze.com', 'ns2.stackryze.com', 'ns3.stackryze.com'].map((ns) => (
+                      <button key={ns} onClick={() => { navigator.clipboard.writeText(ns); toast.success('Copied'); }} className="group flex items-center justify-between rounded-lg border border-success/20 bg-success/5 px-3 py-2 font-mono text-sm text-success transition-colors hover:bg-success/10">{ns}<Copy className="h-3.5 w-3.5 opacity-50 group-hover:opacity-100" /></button>
+                    ))}
+                  </div>
+                </div>
+                {verificationDetails?.current && (
+                  <div>
+                    <h4 className="mb-2 text-[11px] font-medium uppercase tracking-wider text-destructive">Current nameservers</h4>
+                    <div className="flex flex-col gap-2">
+                      {verificationDetails.current.length > 0 ? verificationDetails.current.map((ns) => (
+                        <div key={ns} className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2 font-mono text-sm text-destructive"><X className="h-3.5 w-3.5" /> {ns}</div>
+                      )) : <div className="py-2 text-sm italic text-muted-foreground">No nameservers found</div>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <Button onClick={handleVerifyZone} disabled={verifying} className="shrink-0">{verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />} Check nameservers</Button>
+          </div>
+        </Callout>
+      )}
+
+      {isSuspended && (
+        <Callout tone="destructive" icon={ShieldOff} title="Zone suspended">
+          <p className="text-sm text-muted-foreground"><span className="font-medium text-foreground">{stripDot(zone.name)}</span> has been suspended by an administrator. Your DNS records are safe. Think this is an error? <a href="mailto:support@stackryze.com" className="text-primary hover:underline">Contact support</a>.</p>
+        </Callout>
+      )}
+
+      <div className={cn('space-y-4', isBlocked && 'pointer-events-none opacity-60')}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">DNS records</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{zone.records_count || rows.length}/{zone.recordLimit || 200} records</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 sm:w-56"><Input placeholder="Search records…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} aria-label="Search records" /></div>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-28"><SelectValue placeholder="Type" /></SelectTrigger>
+              <SelectContent><SelectItem value="all">All types</SelectItem>{availableTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+            </Select>
+            <Tooltip>
+              <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => fetchRecords(searchQuery)} aria-label="Refresh records"><RotateCw className={cn('h-4 w-4', loadingRecords && 'animate-spin')} /></Button></TooltipTrigger>
+              <TooltipContent>Refresh</TooltipContent>
+            </Tooltip>
+            <Button onClick={() => setRecordDialog({ open: true, initial: null })}><Plus className="h-4 w-4" /> Add record</Button>
+          </div>
+        </div>
+
+        <div className="panel overflow-hidden rounded-xl">
+          {loadingRecords && rows.length === 0 ? (
+            <div className="divide-y divide-border">{Array.from({ length: 4 }).map((_, i) => (<div key={i} className="flex items-center gap-4 px-4 py-4"><Skeleton className="h-5 w-14 rounded-md" /><Skeleton className="h-4 w-32" /><Skeleton className="h-4 flex-1" /><Skeleton className="h-4 w-16" /></div>))}</div>
+          ) : rows.length === 0 ? (
+            <div className="flex flex-col items-center py-16 text-center"><Globe className="mb-3 h-8 w-8 text-muted-foreground" /><p className="text-sm text-muted-foreground">{searchQuery ? 'No matching records.' : 'No DNS records yet.'}</p></div>
+          ) : (
+            <Table className="min-w-[640px]">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-20">Type</TableHead><TableHead className="w-48">Name</TableHead><TableHead>Content</TableHead><TableHead className="w-24">TTL</TableHead><TableHead className="w-16 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row, i) => {
+                  const key = `${row.name}-${row.type}-${row.content}`;
+                  const locked = row.type === 'SOA' || row.type === 'NS';
+                  return (
+                    <TableRow key={`${key}-${i}`} className="group hover:bg-secondary/40">
+                      <TableCell className="align-top"><RecordTypeBadge type={row.type} /></TableCell>
+                      <TableCell className="align-top break-all font-mono text-xs text-foreground">{stripDot(row.name)}</TableCell>
+                      <TableCell className="align-top break-all font-mono text-xs text-muted-foreground"><span className="inline-flex items-center gap-1">{stripDot(row.content)}<CopyButton value={stripDot(row.content)} /></span></TableCell>
+                      <TableCell className="align-top text-xs text-muted-foreground">{row.ttl}s</TableCell>
+                      <TableCell className="align-top text-right">
+                        {!locked && (
+                          <div className="flex items-center justify-end gap-0.5">
+                            <Tooltip>
+                              <TooltipTrigger asChild><button onClick={() => setRecordDialog({ open: true, initial: row })} className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-3.5 w-3.5" /></button></TooltipTrigger>
+                              <TooltipContent>Edit</TooltipContent>
+                            </Tooltip>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild><button aria-label="Delete record" disabled={deletingKey === key} className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">{deletingKey === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button></AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader><AlertDialogTitle>Delete {row.type} record?</AlertDialogTitle><AlertDialogDescription className="break-all font-mono text-xs">{stripDot(row.content)}</AlertDialogDescription></AlertDialogHeader>
+                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => deleteOne(row)}>Delete</AlertDialogAction></AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </div>
+
+      <RecordFormDialog open={recordDialog.open} onOpenChange={(o) => setRecordDialog((d) => ({ ...d, open: o }))} zoneName={zone.name} initial={recordDialog.initial} onSubmit={submitRecord} submitting={submitting} />
+    </div>
+  );
+}

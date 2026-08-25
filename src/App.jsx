@@ -1,52 +1,55 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import ZoneDetails from './pages/ZoneDetails';
 import Landing from './pages/Landing';
 import Auth from './pages/Auth';
-import Settings from './pages/Settings';
-import Terms from './pages/Terms';
-import AUP from './pages/AUP';
-import Privacy from './pages/Privacy';
-import Abuse from './pages/Abuse';
+import Dashboard from './pages/Dashboard';
+import ZoneDetails from './pages/ZoneDetails';
 import DNSChecker from './pages/DNSChecker';
+import Settings from './pages/Settings';
+import NotFound from './pages/NotFound';
+import Terms from './pages/legal/Terms';
+import AUP from './pages/legal/AUP';
+import Privacy from './pages/legal/Privacy';
+import Abuse from './pages/legal/Abuse';
 import Layout from './components/Layout';
-import { ToastProvider } from './components/Toast';
+import { TooltipProvider } from './components/ui/tooltip';
+import { Toaster } from './components/ui/sonner';
 import './index.css';
 
-function App() {
+export default function App() {
   return (
-    <ToastProvider>
+    <TooltipProvider delayDuration={200}>
       <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={<Auth />} />
-        <Route path="/signup" element={<Auth />} />
-        <Route path="/auth/callback" element={<Auth />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/aup" element={<AUP />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/abuse" element={<Abuse />} />
+        <Routes>
+          {/* Public */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Auth />} />
+          <Route path="/signup" element={<Auth />} />
+          <Route path="/auth/callback" element={<Auth />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/aup" element={<AUP />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/abuse" element={<Abuse />} />
 
-        {/* Protected/Dashboard Routes */}
-        <Route path="/*" element={
-          <Layout>
-            <Routes>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/zones" element={<Dashboard />} />
-              <Route path="/zones/:id" element={<ZoneDetails />} />
-              <Route path="/dns-checker" element={<DNSChecker />} />
-              <Route path="/settings" element={<Settings />} />
-              {/* Fallback to dashboard for unknown routes within layout? Or public 404? */}
-              {/* For now, just redirecting / to landing is handled above */}
-            </Routes>
-          </Layout>
-        } />
-      </Routes>
-    </Router>
-    </ToastProvider>
+          {/* Protected (app shell) */}
+          <Route
+            path="/*"
+            element={
+              <Layout>
+                <Routes>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/zones" element={<Dashboard />} />
+                  <Route path="/zones/:id" element={<ZoneDetails />} />
+                  <Route path="/dns-checker" element={<DNSChecker />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Layout>
+            }
+          />
+        </Routes>
+      </Router>
+      <Toaster />
+    </TooltipProvider>
   );
 }
-
-export default App;
