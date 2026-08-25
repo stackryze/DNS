@@ -1,5 +1,5 @@
 // Generate copy-paste API snippets for the DNS API.
-const BASE = import.meta.env.VITE_API_URL || 'https://api.stackryze.com/api';
+const BASE = import.meta.env.VITE_API_URL || 'https://api-dns.stackryze.com/api';
 const TOKEN_PLACEHOLDER = 'YOUR_API_TOKEN';
 
 export function snippets(zoneId = 'ZONE_ID', token = TOKEN_PLACEHOLDER) {
