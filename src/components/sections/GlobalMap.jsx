@@ -13,7 +13,7 @@ const FILTERS = ['All', 'Americas', 'Europe', 'Asia'];
 export default function GlobalMap() {
   const [filter, setFilter] = useState('All');
   const shown = filter === 'All' ? REGIONS : REGIONS.filter((r) => r.cont === filter);
-  const markers = shown.map((r) => ({ lat: r.lat, lng: r.lng, size: 0.85, pulse: true }));
+  const markers = shown.map((r) => ({ lat: r.lat, lng: r.lng, size: 1.1, pulse: true }));
 
   return (
     <section id="network" className="scroll-mt-28 border-t border-white/[0.06]">
@@ -45,13 +45,13 @@ export default function GlobalMap() {
           <div className="pointer-events-none absolute left-1/2 top-1/3 h-[55%] w-[60%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/12 blur-[120px]" />
           <div className="relative px-4 py-8 sm:px-10 sm:py-12">
             <DottedMap
-              width={165}
-              height={78}
-              mapSamples={7000}
+              width={220}
+              height={104}
+              mapSamples={13000}
               markers={markers}
               dotColor="currentColor"
               markerColor="#eac53a"
-              dotRadius={0.3}
+              dotRadius={0.22}
               className="text-white/[0.13]"
             />
           </div>
