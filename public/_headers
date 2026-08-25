@@ -1,9 +1,8 @@
-/*
-  Long-cache immutable hashed assets; keep HTML fresh.
-*/
+# Long-cache immutable hashed assets; keep HTML fresh.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+# Security headers for all routes.
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
