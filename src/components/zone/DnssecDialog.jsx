@@ -51,6 +51,7 @@ export default function DnssecDialog({ open, onOpenChange, zoneId, zoneName }) {
 
   const secured = status?.secured;
   const ds = status?.ds || [];
+  const unavailable = status?.available === false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -71,7 +72,9 @@ export default function DnssecDialog({ open, onOpenChange, zoneId, zoneName }) {
               {secured ? <Badge variant="success"><span className="h-1.5 w-1.5 rounded-full bg-success" /> Signed</Badge> : <Badge variant="secondary">Not signed</Badge>}
             </div>
 
-            {secured ? (
+            {unavailable ? (
+              <p className="text-sm text-muted-foreground">This zone is still being provisioned. DNSSEC can be enabled once the zone is active.</p>
+            ) : secured ? (
               <>
                 <div className="space-y-2">
                   <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">DS record — add this at your registrar</div>
@@ -98,7 +101,7 @@ export default function DnssecDialog({ open, onOpenChange, zoneId, zoneName }) {
               </AlertDialogContent>
             </AlertDialog>
           ) : (
-            <Button onClick={enable} disabled={busy}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />} Enable DNSSEC</Button>
+            <Button onClick={enable} disabled={busy || unavailable}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />} Enable DNSSEC</Button>
           )}
         </DialogFooter>
       </DialogContent>
