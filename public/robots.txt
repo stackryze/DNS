@@ -1,4 +1,3 @@
 User-agent: *
 Allow: /
-
 Sitemap: https://dns.stackryze.com/sitemap.xml

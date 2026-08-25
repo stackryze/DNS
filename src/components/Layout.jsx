@@ -1,226 +1,202 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { LayoutDashboard, Globe, Settings, LogOut, Search, Command, Bell, Menu, X, Activity, ExternalLink, Heart, FileText, Github } from 'lucide-react';
-import api from '../services/api';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard, Globe, Settings, LogOut, Search, Command as CommandIcon, Bell,
+  Menu, Activity, ExternalLink, Heart, FileText, Github, ChevronsUpDown, User,
+} from 'lucide-react';
+import { getMe } from '../services/api';
+import CommandMenu from './CommandMenu';
+import { Avatar, AvatarImage, AvatarFallback } from './ui/avatar';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from './ui/sheet';
+import { Popover, PopoverTrigger, PopoverContent } from './ui/popover';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator } from './ui/dropdown-menu';
+import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import { cn } from '../lib/utils';
 
-const SidebarItem = ({ icon: Icon, label, to, active }) => (
-    <Link to={to} className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden
-        ${active
-            ? 'text-white font-medium bg-[#38BDF8]/10 border border-[#38BDF8]/20'
-            : 'text-gray-400 hover:bg-white/5 hover:text-white'
-        }`}>
-        {active && <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#38BDF8] shadow-[0_0_10px_#38BDF8]"></div>}
-        <Icon className={`w-5 h-5 transition-transform group-hover:scale-110 ${active ? 'text-[#38BDF8]' : ''}`} />
-        <span className="">{label}</span>
-    </Link>
-);
+const NAV = [
+  { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
+  { icon: Activity, label: 'DNS Checker', to: '/dns-checker' },
+  { icon: Settings, label: 'Settings', to: '/settings' },
+];
 
-const Layout = ({ children }) => {
-    const location = useLocation();
-    const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [user, setUser] = useState(null);
+const QUICK_LINKS = [
+  { icon: Globe, label: 'Domains', href: 'https://domain.stackryze.com' },
+  { icon: Activity, label: 'Status', href: 'https://status.stackryze.com' },
+  { icon: FileText, label: 'Docs', href: 'https://dns-docs.stackryze.com' },
+  { icon: Github, label: 'GitHub', href: 'https://github.com/stackryze/DNS' },
+];
 
-    useEffect(() => {
-        // Session cookie is httpOnly, so verify auth via the backend.
-        const fetchUser = async () => {
-            try {
-                const response = await api.get('/auth/me');
-                setUser(response.data);
-                localStorage.setItem('sr_auth', '1');
-            } catch (error) {
-                console.error('Failed to fetch user:', error);
-                localStorage.removeItem('sr_auth');
-                navigate('/login');
-            }
-        };
+const isActive = (pathname, to) =>
+  to === '/dashboard' ? pathname === '/dashboard' || pathname.startsWith('/zones') : pathname === to;
 
-        fetchUser();
-    }, [navigate]);
-
-    const handleLogout = () => {
-        localStorage.removeItem('sr_auth');
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
-        window.location.href = `${API_URL}/auth/logout`;
-    };
-
-    return (
-        <div className="flex min-h-screen bg-[#121212] text-white font-sans selection:bg-[#38BDF8] selection:text-white bg-[url('/pixel_art_large.png')] bg-fixed bg-cover">
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm -z-10"></div>
-
-            {/* Mobile Menu Overlay */}
-            {isMobileMenuOpen && (
-                <div 
-                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                />
+function SidebarNav({ pathname, onNavigate }) {
+  return (
+    <nav className="flex-1 space-y-0.5">
+      {NAV.map(({ icon: Icon, label, to }) => {
+        const active = isActive(pathname, to);
+        return (
+          <Link
+            key={to}
+            to={to}
+            onClick={onNavigate}
+            aria-current={active ? 'page' : undefined}
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors duration-200',
+              active ? 'bg-secondary font-medium text-foreground' : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground'
             )}
+          >
+            <Icon className={cn('h-[18px] w-[18px]', active && 'text-primary')} />
+            {label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
 
-            {/* Sidebar */}
-            <aside className={`w-72 flex flex-col bg-[#1A1A1A]/60 backdrop-blur-xl border-r border-white/5 p-6 fixed h-full z-50 transition-transform duration-300 ${
-                isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-            } md:translate-x-0`}>
-                <div className="flex items-center justify-between mb-10">
-                    <Link to="/" className="flex items-center gap-3 px-2 hover:opacity-80 transition-opacity">
-                        <img src="/stackryze_logo_white.png" alt="Stackryze" className="h-9 w-auto object-contain" />
-                        <h1 className="text-base font-bold text-white tracking-wide leading-tight">Stackryze <span className="text-[#38BDF8]">DNS</span></h1>
-                    </Link>
-                    <button 
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
-                </div>
+function Brand() {
+  return (
+    <Link to="/" className="flex items-center gap-2.5 px-2 transition-opacity hover:opacity-80">
+      <img src="/stackryze_logo_white.png" alt="Stackryze" className="h-8 w-auto" />
+      <span className="font-display text-[15px] font-semibold tracking-tight">
+        Stackryze <span className="text-primary">DNS</span>
+      </span>
+    </Link>
+  );
+}
 
-                <nav className="flex-1 space-y-1">
-                    <SidebarItem icon={LayoutDashboard} label="Dashboard" to="/dashboard" active={location.pathname === '/dashboard'} />
-                    <SidebarItem icon={Activity} label="DNS Checker" to="/dns-checker" active={location.pathname === '/dns-checker'} />
-                    <SidebarItem icon={Settings} label="Settings" to="/settings" active={location.pathname === '/settings'} />
-                </nav>
+export default function Layout({ children }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [user, setUser] = useState(null);
 
-                <div className="pt-6 border-t border-white/5">
-                    <Link to="/settings" className="flex items-center gap-3 px-3 py-2 mb-2 rounded-lg hover:bg-white/5 transition-colors group">
-                        {user?.avatarUrl ? (
-                            <img 
-                                src={user.avatarUrl} 
-                                alt={user.name || 'Profile'} 
-                                className="w-9 h-9 rounded-full ring-2 ring-[#121212] group-hover:ring-[#38BDF8]/20 transition-all object-cover"
-                            />
-                        ) : (
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#38BDF8] to-purple-600 ring-2 ring-[#121212] group-hover:ring-[#38BDF8]/20 transition-all"></div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold text-gray-200 group-hover:text-white transition-colors truncate">
-                                {user?.username || user?.name || 'Loading...'}
-                            </p>
-                            <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
-                                {user?.email || ''}
-                            </p>
-                        </div>
-                    </Link>
+  useEffect(() => {
+    getMe()
+      .then((u) => { setUser(u); localStorage.setItem('sr_auth', '1'); })
+      .catch(() => { localStorage.removeItem('sr_auth'); navigate('/login'); });
+  }, [navigate]);
 
-                    <button
-                        onClick={handleLogout}
-                        className="flex items-center gap-3 px-4 py-2 w-full rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-all text-sm"
-                    >
-                        <LogOut className="w-4 h-4" />
-                        <span className="font-medium">Sign Out</span>
-                    </button>
-                </div>
-            </aside>
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setCmdOpen((v) => !v);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
-            {/* Main Content */}
-            <main className="flex-1 md:ml-72 h-screen overflow-hidden flex flex-col relative">
-                {/* Topbar */}
-                <header className="px-4 md:px-8 py-4 md:py-5 flex justify-between items-center border-b border-white/5 bg-[#121212]/80 backdrop-blur-md z-30 shrink-0">
-                    <div className="flex items-center gap-3">
-                        <button 
-                            onClick={() => setIsMobileMenuOpen(true)}
-                            className="md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors"
-                        >
-                            <Menu className="w-6 h-6" />
-                        </button>
-                        
-                        {/* Quick Links */}
-                        <div className="hidden lg:flex items-center gap-2">
-                            <a 
-                                href="https://domain.stackryze.com" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-                            >
-                                <Globe className="w-3.5 h-3.5" />
-                                <span>Domains</span>
-                                <ExternalLink className="w-3 h-3 opacity-50" />
-                            </a>
-                            <a 
-                                href="https://status.stackryze.com" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-                            >
-                                <Activity className="w-3.5 h-3.5" />
-                                <span>Status</span>
-                                <ExternalLink className="w-3 h-3 opacity-50" />
-                            </a>
-                            <a 
-                                href="https://dns-docs.stackryze.com" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-                            >
-                                <FileText className="w-3.5 h-3.5" />
-                                <span>Docs</span>
-                                <ExternalLink className="w-3 h-3 opacity-50" />
-                            </a>
-                            <a 
-                                href="https://github.com/stackryze/DNS" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-                            >
-                                <Github className="w-3.5 h-3.5" />
-                                <span>GitHub</span>
-                                <ExternalLink className="w-3 h-3 opacity-50" />
-                            </a>
-                            <a 
-                                href="https://github.com/sponsors/sudheerbhuvana/" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-pink-500/10 text-pink-400 hover:bg-pink-500/20 hover:text-pink-300 border border-pink-500/20 transition-all"
-                            >
-                                <Heart className="w-3.5 h-3.5" />
-                                <span>Donate</span>
-                            </a>
-                        </div>
-                    </div>
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('sr_auth');
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+    window.location.href = `${API_URL}/auth/logout`;
+  }, []);
 
-                    <div className="flex items-center gap-2 md:gap-4">
-                        <div className="relative group">
-                            <Search className="absolute left-2 md:left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-[#38BDF8] transition-colors" />
-                            <input
-                                type="text"
-                                placeholder="Search..."
-                                value={searchParams.get('q') || ''}
-                                onChange={(e) => {
-                                    const query = e.target.value;
-                                    setSearchParams(query ? { q: query } : {});
-                                    if (location.pathname !== '/dashboard') {
-                                        navigate(`/dashboard?q=${query}`);
-                                    }
-                                }}
-                                className="w-32 md:w-64 bg-black/20 border border-white/10 rounded-lg py-1.5 md:py-2 pl-8 md:pl-10 pr-2 md:pr-4 text-xs md:text-sm focus:outline-none focus:border-[#38BDF8]/50 focus:ring-1 focus:ring-[#38BDF8]/50 transition-all placeholder-gray-600 text-white"
-                            />
-                            <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden md:flex items-center gap-1 opacity-50">
-                                <Command className="w-3 h-3 text-gray-400" />
-                                <span className="text-[10px] text-gray-400 font-mono">K</span>
-                            </div>
-                        </div>
-                        <button className="p-1.5 md:p-2 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-colors relative">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-[#121212]"></span>
-                        </button>
-                    </div>
-                </header>
+  const displayName = user?.username || user?.name || 'Account';
+  const initials = (user?.username || user?.name || '?').slice(0, 1).toUpperCase();
 
-                <div className="px-4 md:px-8 py-4 md:py-6 w-full flex-1 overflow-y-auto relative z-0">
-                    {children}
-                </div>
+  return (
+    <div className="flex min-h-screen font-sans text-foreground">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground">
+        Skip to content
+      </a>
 
-                <footer className="py-4 text-center shrink-0 border-t border-white/5 bg-[#121212] z-30">
-                    <div className="flex items-center justify-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
-                        <span className="text-xs font-medium text-gray-500">A project by</span>
-                        <a href="https://stackryze.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 group">
-                            <img src="/stackryze_logo_white.png" alt="Stackryze" className="h-4 w-auto opacity-90 group-hover:opacity-100 transition-opacity" />
-                            <span className="text-white font-bold text-xs group-hover:text-[#38BDF8] transition-colors">Stackryze</span>
-                        </a>
-                    </div>
-                </footer>
-            </main>
+      {/* Desktop sidebar */}
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-border bg-card p-4 md:flex">
+        <div className="mb-8 px-1 pt-2"><Brand /></div>
+        <SidebarNav pathname={location.pathname} />
+        <div className="mt-4 border-t border-border pt-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-secondary/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Avatar>
+                {user?.avatarUrl && <AvatarImage src={user.avatarUrl} alt={displayName} />}
+                <AvatarFallback>{initials}</AvatarFallback>
+              </Avatar>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-foreground">{displayName}</p>
+                <p className="truncate font-mono text-[11px] text-muted-foreground">{user?.email || ''}</p>
+              </div>
+              <ChevronsUpDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" side="top" className="w-56">
+              <DropdownMenuLabel>Signed in</DropdownMenuLabel>
+              <DropdownMenuItem onSelect={() => navigate('/settings')}><User /> Account settings</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => window.open('https://auth.stackryze.com', '_blank', 'noopener')}><ExternalLink /> Security (SSO)</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleLogout} className="text-destructive focus:text-destructive"><LogOut /> Sign out</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-    );
-};
+      </aside>
 
-export default Layout;
+      {/* Main column */}
+      <div className="flex min-h-screen flex-1 flex-col md:ml-64">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-6">
+          <div className="flex items-center gap-2">
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetTrigger className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring md:hidden">
+                <Menu className="h-5 w-5" /><span className="sr-only">Open navigation</span>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72">
+                <SheetTitle className="sr-only">Navigation</SheetTitle>
+                <div className="mb-6 mt-1"><Brand /></div>
+                <SidebarNav pathname={location.pathname} onNavigate={() => setMobileOpen(false)} />
+              </SheetContent>
+            </Sheet>
+
+            <nav className="hidden items-center gap-0.5 lg:flex">
+              {QUICK_LINKS.map(({ icon: Icon, label, href }) => (
+                <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground">
+                  <Icon className="h-3.5 w-3.5" />{label}<ExternalLink className="h-3 w-3 opacity-50" />
+                </a>
+              ))}
+              <a href="https://github.com/sponsors/sudheerbhuvana/" target="_blank" rel="noopener noreferrer" className="ml-1 flex items-center gap-1.5 rounded-lg border border-primary/20 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10">
+                <Heart className="h-3.5 w-3.5" /> Donate
+              </a>
+            </nav>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button onClick={() => setCmdOpen(true)} className="group flex h-9 items-center gap-2 rounded-lg border border-input bg-secondary/40 pl-2.5 pr-2 text-sm text-muted-foreground transition-colors hover:bg-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <Search className="h-4 w-4" />
+              <span className="hidden sm:inline">Search…</span>
+              <kbd className="ml-2 hidden items-center gap-0.5 rounded border border-border bg-background px-1.5 font-mono text-[10px] text-muted-foreground sm:flex"><CommandIcon className="h-3 w-3" />K</kbd>
+            </button>
+            <Popover>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <PopoverTrigger className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                    <Bell className="h-5 w-5" />
+                    <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
+                  </PopoverTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Notifications</TooltipContent>
+              </Tooltip>
+              <PopoverContent align="end" className="w-80 p-0">
+                <div className="border-b border-border px-4 py-3"><p className="text-sm font-semibold text-foreground">Notifications</p></div>
+                <div className="px-4 py-8 text-center text-sm text-muted-foreground">You're all caught up.</div>
+              </PopoverContent>
+            </Popover>
+          </div>
+        </header>
+
+        <main id="main-content" className="flex-1 px-4 py-6 md:px-6 lg:px-8">{children}</main>
+
+        <footer className="shrink-0 border-t border-border py-4 text-center">
+          <div className="flex items-center justify-center gap-2 opacity-60 transition-opacity hover:opacity-100">
+            <span className="text-xs text-muted-foreground">A project by</span>
+            <a href="https://stackryze.com" target="_blank" rel="noopener noreferrer" className="group flex items-center gap-1.5">
+              <img src="/stackryze_logo_white.png" alt="Stackryze" className="h-4 w-auto" />
+              <span className="text-xs font-semibold text-foreground transition-colors group-hover:text-primary">Stackryze</span>
+            </a>
+          </div>
+        </footer>
+      </div>
+
+      <CommandMenu open={cmdOpen} onOpenChange={setCmdOpen} />
+    </div>
+  );
+}

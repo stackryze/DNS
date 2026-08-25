@@ -1,283 +1,256 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Globe, Zap, Heart, CheckCircle, XCircle, Loader2, Code, Users, Play, LayoutDashboard } from 'lucide-react';
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { motion, useReducedMotion } from 'framer-motion';
+import { ArrowRight, ArrowUpRight, Globe2, Boxes, Gauge, Code2, ShieldCheck, LayoutDashboard, Github, Terminal } from 'lucide-react';
+import SiteHeader from '../components/SiteHeader';
+import SiteFooter from '../components/SiteFooter';
 import WorldMap from '../components/WorldMap';
 import StatsDisplay from '../components/StatsDisplay';
-import api from '../services/api';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
 
-const Landing = () => {
-    const navigate = useNavigate();
-    const [domain, setDomain] = useState("");
-    const [isChecking, setIsChecking] = useState(false);
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
-    const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('sr_auth'));
+function Reveal({ children, delay = 0, className }) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      className={className}
+      initial={reduce ? false : { opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
-    useEffect(() => {
-        api.get('/auth/me')
-            .then((res) => {
-                if (res.data && (res.data._id || res.data.id || res.data.email)) {
-                    localStorage.setItem('sr_auth', '1');
-                    setIsLoggedIn(true);
-                }
-            })
-            .catch(() => {
-                // Unauthenticated
-            });
-    }, []);
+const POPS = [
+  { city: 'New York', region: 'North America', code: 'JFK' },
+  { city: 'Frankfurt', region: 'Europe', code: 'FRA' },
+  { city: 'Hyderabad', region: 'Asia', code: 'HYD' },
+];
 
-    // Mock check for now, or redirect to dashboard
-    const handleCheck = () => {
-        if (!domain) return;
-        setIsChecking(true);
-        setTimeout(() => {
-            setIsChecking(false);
-            navigate('/dashboard');
-        }, 1000);
-    };
+const STEPS = [
+  { n: '01', title: 'Add your domain', body: 'Create a zone in seconds. We generate your records and nameservers instantly.' },
+  { n: '02', title: 'Point your nameservers', body: 'Update NS records at your registrar to ns1–ns3.stackryze.com.' },
+  { n: '03', title: 'Resolve worldwide', body: 'Queries answer from the nearest edge the moment propagation completes.' },
+];
 
-    return (
-        <div className="min-h-screen bg-[#1A1A1A] font-sans text-white selection:bg-[#38BDF8] selection:text-white">
-            {/* Header */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-[#1A1A1A]/95 backdrop-blur-md border-b border-white/5 w-full transition-all duration-300">
-                <div className="w-full px-4 sm:px-6 md:px-12 lg:px-16 h-16 sm:h-20 flex items-center justify-between">
-                    {/* Left Side: Logo */}
-                    <div className="flex items-center gap-12">
-                        <a href="/" className="flex items-center gap-3 transition-transform hover:scale-105 active:scale-95">
-                            <img src="/stackryze_logo_white.png" alt="Stackryze Logo" className="h-8 sm:h-10 w-auto" />
-                            <span className="text-sm sm:text-lg md:text-xl font-bold text-white tracking-tight">Stackryze <span className="text-[#38BDF8]">DNS</span></span>
-                        </a>
+export default function Landing() {
+  return (
+    <div className="flex min-h-screen flex-col text-foreground">
+      <SiteHeader />
 
-                        {/* Desktop Navigation */}
-                        <nav className="hidden xl:flex items-center gap-8">
-                            <a href="#features" className="text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#38BDF8] transition-colors">Features</a>
-                            <a href="#network" className="text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#38BDF8] transition-colors">Network</a>
-                            <a href="https://dns-docs.stackryze.com" target="_blank" className="text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#38BDF8] transition-colors">Docs</a>
-                            <a href="https://status.stackryze.com" target="_blank" className="text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#38BDF8] transition-colors">Status</a>
-                            <a href="https://github.com/stackryze/DNS" target="_blank" className="text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-[#38BDF8] transition-colors">GitHub</a>
-                        </nav>
-                    </div>
+      <main className="flex-1">
+        {/* Hero */}
+        <section className="relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-grid mask-fade opacity-40" />
+          <div className="container-custom grid items-center gap-14 pt-28 pb-20 lg:grid-cols-[1.05fr_0.95fr] lg:pt-32 lg:pb-28">
+            <Reveal>
+              <div className="max-w-xl">
+                <a href="#network" className="group mb-7 inline-flex items-center gap-2 rounded-full border border-border bg-white/[0.03] py-1 pl-1.5 pr-3 text-sm text-muted-foreground backdrop-blur transition-colors hover:border-border-strong hover:text-foreground">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary" /> Live
+                  </span>
+                  Serving from 3 global regions
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </a>
 
-                    {/* Right Side: CTA & Mobile Menu Toggle */}
-                    <div className="flex items-center gap-4 sm:gap-6">
-                        <div className="hidden sm:flex items-center gap-6 mr-2">
-                            {!isLoggedIn && <Link to="/login" className="text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-white transition-colors">Login</Link>}
-                        </div>
-                        <Link
-                            to={isLoggedIn ? "/dashboard" : "/login"}
-                            className={`${isLoggedIn
-                                ? "bg-[#1A1A1A] text-white hover:bg-[#FFD23F] hover:text-[#1A1A1A]"
-                                : "bg-[#FFD23F] text-[#1A1A1A] hover:bg-white hover:text-[#1A1A1A]"
-                                } px-4 py-2 md:px-6 md:py-2.5 font-bold uppercase text-xs md:text-sm tracking-widest border-2 border-white transition-all duration-150 shadow-[4px_4px_0px_0px_white] hover:shadow-none hover:translate-x-[1px] hover:translate-y-[1px] flex items-center gap-2 group`}
-                        >
-                            {isLoggedIn && <LayoutDashboard className="w-4 h-4 group-hover:rotate-12 transition-transform" />}
-                            <span>{isLoggedIn ? "Dashboard" : "Get Started"}</span>
-                        </Link>
-
-                        {/* Mobile Toggle */}
-                        <button
-                            onClick={() => setIsMenuOpen(!isMenuOpen)}
-                            className="xl:hidden p-2 text-gray-400 hover:text-white transition-colors"
-                        >
-                            <div className="w-6 h-5 relative flex flex-col justify-between overflow-hidden">
-                                <span className={`w-full h-0.5 bg-current transition-all duration-300 ${isMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
-                                <span className={`w-full h-0.5 bg-current transition-all duration-300 ${isMenuOpen ? 'opacity-0 translate-x-10' : ''}`}></span>
-                                <span className={`w-full h-0.5 bg-current transition-all duration-300 ${isMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
-                            </div>
-                        </button>
-                    </div>
+                <h1 className="text-fade text-4xl font-semibold leading-[1.03] tracking-[-0.02em] sm:text-5xl lg:text-[3.75rem]">
+                  Authoritative DNS
+                  <br />
+                  built for developers.
+                </h1>
+                <p className="mt-6 max-w-md text-lg leading-relaxed text-muted-foreground">
+                  Free, open-source DNS hosting on a global anycast network. Manage every zone from a clean dashboard and serve queries from the nearest edge.
+                </p>
+                <div className="mt-9 flex flex-wrap items-center gap-3">
+                  <Button asChild size="lg"><Link to="/login">Get started free <ArrowRight className="h-4 w-4" /></Link></Button>
+                  <Button asChild size="lg" variant="outline"><a href="https://dns-docs.stackryze.com" target="_blank" rel="noreferrer">Read the docs</a></Button>
                 </div>
 
-                {/* Mobile Menu */}
-                <div className={`xl:hidden absolute top-full left-0 right-0 bg-[#1A1A1A] border-b border-white/5 transition-all duration-500 overflow-hidden ${isMenuOpen ? 'max-h-[400px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                    <nav className="p-8 flex flex-col gap-6 text-center">
-                        <a href="#features" onClick={() => setIsMenuOpen(false)} className="text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-[#38BDF8]">Features</a>
-                        <a href="#network" onClick={() => setIsMenuOpen(false)} className="text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-[#38BDF8]">Network</a>
-                        <a href="https://dns-docs.stackryze.com" target="_blank" className="text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-[#38BDF8]">Documentation</a>
-                        <a href="https://status.stackryze.com" target="_blank" className="text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-[#38BDF8]">Status</a>
-                        <a href="https://github.com/stackryze/DNS" target="_blank" className="text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-[#38BDF8]">GitHub</a>
-                        {!isLoggedIn && <Link to="/login" onClick={() => setIsMenuOpen(false)} className="text-xs font-bold uppercase tracking-widest text-[#FFD23F]">Login</Link>}
-                    </nav>
+                <dl className="mt-12 grid max-w-lg grid-cols-3 gap-px overflow-hidden rounded-xl border border-border bg-border">
+                  {[{ v: '3', l: 'Regions' }, { v: '<30ms', l: 'Median' }, { v: '100%', l: 'Free' }].map((s) => (
+                    <div key={s.l} className="bg-card px-4 py-3.5">
+                      <dt className="font-display text-xl font-semibold text-foreground">{s.v}</dt>
+                      <dd className="mt-0.5 text-xs text-muted-foreground">{s.l}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </Reveal>
+
+            <Reveal delay={0.12}>
+              <div className="panel hairline-top glow-ring overflow-hidden rounded-2xl p-2.5">
+                <div className="flex items-center gap-2 px-2 py-2">
+                  <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-warning/70" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-success/70" />
+                  <span className="ml-2 font-mono text-xs text-muted-foreground">anycast-network · live</span>
+                  <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-success/25 bg-success/10 px-2 py-0.5 font-mono text-[10px] text-success">
+                    <span className="h-1.5 w-1.5 rounded-full bg-success" /> operational
+                  </span>
                 </div>
-            </header>
-
-            {/* Hero Section */}
-            <section className="relative w-full min-h-screen flex flex-col justify-center pt-20 pb-12 bg-[#1A1A1A] bg-[url('/pixel_art_large.png')] bg-cover bg-center bg-no-repeat overflow-hidden border-b border-[#333]">
-                <div className="absolute inset-0 bg-black/60 z-0"></div>
-
-                <div className="relative z-10 w-full px-6 md:px-12 lg:px-16 flex-1 flex flex-col justify-center items-center text-center">
-                    <div className="max-w-5xl mx-auto space-y-8">
-                        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight text-white tracking-tight">
-                            Modern DNS Hosting<br />
-                            <span className="text-[#38BDF8]">for Everyone.</span>
-                        </h1>
-                        <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed font-light">
-                            Stackryze DNS is a free DNS hosting service, designed with security in mind.<br className="hidden md:block" />
-                            Running on <span className="font-bold text-[#FFD23F] font-mono">open-source software</span>, it is free for everyone to use.
-                        </p>
-
-                        <div className="pt-4">
-                            <Link
-                                to="/dashboard"
-                                className="inline-flex bg-[#FFD23F] text-[#1A1A1A] py-4 px-8 font-bold uppercase text-sm hover:bg-white hover:text-[#1A1A1A] transition-all shadow-[4px_4px_0px_0px_white] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] items-center gap-2 border-2 border-transparent"
-                            >
-                                Start Managing Now <ArrowRight className="w-5 h-5" />
-                            </Link>
-                        </div>
+                <div className="rounded-xl border border-border bg-background/50 px-3 pt-2"><WorldMap /></div>
+                <div className="mt-2.5 grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-border bg-border">
+                  {[{ code: 'JFK', city: 'New York', ms: '18ms' }, { code: 'FRA', city: 'Frankfurt', ms: '11ms' }, { code: 'HYD', city: 'Hyderabad', ms: '24ms' }].map((r) => (
+                    <div key={r.code} className="bg-card px-3 py-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-semibold text-foreground">{r.code}</span>
+                        <span className="font-mono text-[10px] text-success">{r.ms}</span>
+                      </div>
+                      <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{r.city}</p>
                     </div>
+                  ))}
                 </div>
-            </section>
+              </div>
+            </Reveal>
+          </div>
+        </section>
 
-            {/* Features & Global Infrastructure - Side by Side */}
-            <section className="w-full py-24 bg-[#1A1A1A] text-white border-t border-[#333]">
-                <div className="w-full px-6 md:px-12 lg:px-16 max-w-[1800px] mx-auto">
-                    {/* Full Width Stats - "Cover the entire row" */}
-                    <div className="mb-24 w-full relative z-10">
-                        <div className="flex items-center justify-center gap-4 mb-8">
-                            <div className="h-px bg-gradient-to-r from-transparent via-[#333] to-transparent w-full max-w-xs"></div>
-                            <h3 className="text-center text-sm font-bold text-[#38BDF8] uppercase tracking-widest whitespace-nowrap">Live Name Server Statistics</h3>
-                            <div className="h-px bg-gradient-to-r from-transparent via-[#333] to-transparent w-full max-w-xs"></div>
-                        </div>
-                        <StatsDisplay />
+        {/* Live stats */}
+        <section className="relative">
+          <div className="container-custom py-12">
+            <p className="mb-6 text-center font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Live nameserver statistics</p>
+            <StatsDisplay />
+          </div>
+        </section>
+
+        {/* Features bento */}
+        <section id="features" className="scroll-mt-24">
+          <div className="container-custom py-24">
+            <Reveal className="max-w-2xl">
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Everything you need to run DNS.</h2>
+              <p className="mt-4 text-lg text-muted-foreground">No enterprise pricing, no hidden tiers. Just fast, standards-compliant DNS with the records modern apps actually use.</p>
+            </Reveal>
+
+            <div className="mt-14 grid gap-4 lg:grid-cols-3">
+              <Reveal className="lg:col-span-2">
+                <article className="panel group flex h-full flex-col justify-between overflow-hidden rounded-xl p-8">
+                  <div className="flex items-start justify-between">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-secondary text-primary"><Globe2 className="h-5 w-5" /></div>
+                    <Boxes className="h-24 w-24 text-primary/10 transition-transform duration-500 group-hover:scale-110" />
+                  </div>
+                  <div className="mt-8">
+                    <h3 className="text-xl font-semibold">Global anycast network</h3>
+                    <p className="mt-2 max-w-md text-muted-foreground">Authoritative nameservers across three continents answer every query from the location closest to your visitor.</p>
+                  </div>
+                </article>
+              </Reveal>
+
+              <Reveal delay={0.06} className="lg:row-span-2">
+                <article className="hairline-top flex h-full flex-col justify-between overflow-hidden rounded-xl border border-border bg-gradient-to-b from-primary/12 to-card p-8 shadow-[var(--shadow-elev-2)]">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary"><ShieldCheck className="h-5 w-5" /></div>
+                  <div className="mt-8">
+                    <h3 className="text-xl font-semibold">Open source &amp; non-profit</h3>
+                    <p className="mt-2 text-muted-foreground">Built on transparent, community-driven software and free for everyone. No lock-in, no upsell.</p>
+                    <a href="https://github.com/stackryze/DNS" target="_blank" rel="noreferrer" className="mt-6 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"><Github className="h-4 w-4" /> Star on GitHub</a>
+                  </div>
+                </article>
+              </Reveal>
+
+              <Reveal delay={0.04}>
+                <article className="panel h-full rounded-xl p-8">
+                  <div className="flex items-center gap-3"><Boxes className="h-5 w-5 text-primary" /><h3 className="text-lg font-semibold">Modern record types</h3></div>
+                  <p className="mt-3 text-sm text-muted-foreground">Native support for SVCB, HTTPS, TLSA, CAA and every common record.</p>
+                </article>
+              </Reveal>
+
+              <Reveal delay={0.08}>
+                <article className="panel h-full rounded-xl p-8">
+                  <div className="flex items-center gap-3"><LayoutDashboard className="h-5 w-5 text-primary" /><h3 className="text-lg font-semibold">Fast, clean dashboard</h3></div>
+                  <p className="mt-3 text-sm text-muted-foreground">Manage zones and records in a UI that stays out of your way.</p>
+                </article>
+              </Reveal>
+
+              <Reveal delay={0.1} className="lg:col-span-2">
+                <article className="panel flex h-full flex-col justify-between gap-6 rounded-xl p-8 sm:flex-row sm:items-center">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-secondary text-primary"><Code2 className="h-5 w-5" /></div>
+                      <Badge variant="warning">In development</Badge>
                     </div>
+                    <h3 className="mt-6 text-lg font-semibold">Developer REST API</h3>
+                    <p className="mt-2 max-w-md text-sm text-muted-foreground">Automate zones and records with a standards-compliant JSON API.</p>
+                  </div>
+                  <div className="w-full max-w-xs rounded-lg border border-border bg-background/60 p-4 font-mono text-xs text-muted-foreground">
+                    <div className="flex items-center gap-2 text-muted-foreground/70"><Terminal className="h-3.5 w-3.5" /> curl</div>
+                    <p className="mt-2 leading-relaxed"><span className="text-primary">POST</span> /api/zones/:id/records</p>
+                  </div>
+                </article>
+              </Reveal>
+            </div>
+          </div>
+        </section>
 
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-16 items-start">
+        {/* Network */}
+        <section id="network" className="scroll-mt-24 border-t border-border">
+          <div className="container-custom grid items-center gap-14 py-24 lg:grid-cols-2">
+            <Reveal>
+              <div className="panel hairline-top overflow-hidden rounded-2xl p-4"><WorldMap /></div>
+            </Reveal>
+            <Reveal delay={0.1}>
+              <div>
+                <Badge variant="default" className="mb-5"><Gauge className="h-3.5 w-3.5" /> Low latency, worldwide</Badge>
+                <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">Strategically placed edge locations.</h2>
+                <p className="mt-4 max-w-md text-lg text-muted-foreground">Every query is answered from the nearest authoritative nameserver, keeping resolution fast and resilient no matter where your users are.</p>
+                <ul className="mt-8 divide-y divide-border overflow-hidden rounded-xl border border-border">
+                  {POPS.map((pop) => (
+                    <li key={pop.code} className="flex items-center justify-between px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="h-2 w-2 rounded-full bg-success" />
+                        <span className="font-medium">{pop.city}</span>
+                        <span className="text-sm text-muted-foreground">{pop.region}</span>
+                      </div>
+                      <span className="font-mono text-sm text-muted-foreground">{pop.code}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+          </div>
+        </section>
 
-                        {/* LEFT: World Map & Stats */}
-                        <div id="network" className="space-y-8 order-2 xl:order-1 sticky top-24 scroll-mt-32">
-                            <div className="space-y-4 text-center xl:text-left">
-                                <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
-                                    Global <span className="text-[#38BDF8]">Infrastructure.</span>
-                                </h2>
-                                <p className="text-lg text-[#D4D4D4] max-w-xl mx-auto xl:mx-0">
-                                    Strategically located authoritative name servers ensure low latency and high availability worldwide.
-                                </p>
-                            </div>
-                            <div className="relative w-full">
-                                <WorldMap />
-                            </div>
-                        </div>
+        {/* Quickstart */}
+        <section className="border-t border-border">
+          <div className="container-custom py-24">
+            <Reveal className="max-w-2xl">
+              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">From registrar to resolved in minutes.</h2>
+            </Reveal>
+            <div className="mt-14 grid gap-4 md:grid-cols-3">
+              {STEPS.map((step, i) => (
+                <Reveal key={step.n} delay={i * 0.08}>
+                  <div className="panel h-full rounded-xl p-8">
+                    <span className="font-mono text-sm text-primary">{step.n}</span>
+                    <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
+                    <p className="mt-2 text-sm text-muted-foreground">{step.body}</p>
+                  </div>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        </section>
 
-                        {/* RIGHT: Features Grid */}
-                        <div id="features" className="space-y-12 order-1 xl:order-2 scroll-mt-32">
-                            <div className="text-center xl:text-left space-y-6">
-                                <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-white">
-                                    Built for <span className="text-[#38BDF8]">Developers.</span>
-                                </h2>
-                                <p className="text-lg md:text-xl text-[#D4D4D4] leading-relaxed max-w-xl mx-auto xl:mx-0">
-                                    No complex enterprise pricing. No hidden fees.<br className="hidden xl:block" />
-                                    Just pure, high-performance DNS.
-                                </p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-                                {[
-                                    { title: "Modern Records", desc: "Native support for SVCB, HTTPS, and TLSA records.", icon: Globe, color: "text-[#38BDF8]" },
-                                    { title: "Simple Interface", desc: "The easiest way to manage DNS. Clean, fast, and intuitive.", icon: LayoutDashboard, color: "text-[#38BDF8]" },
-                                    { title: "API First (Under Dev)", desc: "Full automation using standards compliant JSON/REST.", icon: Code, color: "text-[#38BDF8]" },
-                                    { title: "Open Source", desc: "100% Free & Non-Profit. Transparent and community driven.", icon: Users, color: "text-[#38BDF8]" },
-                                ].map((feature, idx) => (
-                                    <div key={idx} className="group flex flex-col items-center xl:items-start text-center xl:text-left space-y-3 sm:space-y-4 p-4 sm:p-5 rounded-2xl border border-transparent hover:border-[#38BDF8]/20 hover:bg-[#38BDF8]/5 transition-all duration-300 hover:shadow-[0_0_20px_rgba(56,189,248,0.05)]">
-                                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-[#262626] flex items-center justify-center mb-1 group-hover:bg-[#38BDF8]/10 group-hover:scale-110 transition-all duration-300 ring-1 ring-[#333] group-hover:ring-[#38BDF8]/30`}>
-                                            <feature.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${feature.color} group-hover:brightness-125`} />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm sm:text-lg font-bold text-white mb-1.5 sm:mb-2 group-hover:text-[#38BDF8] transition-colors">{feature.title}</h3>
-                                            <p className="text-[#D4D4D4] leading-relaxed text-[11px] sm:text-sm max-w-[280px] group-hover:text-white transition-colors">
-                                                {feature.desc}
-                                            </p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div className="text-center xl:text-left pt-4">
-                                <a href="https://dns-docs.stackryze.com" target="_blank" className="inline-flex items-center text-white font-bold border-b-2 border-[#FFD23F] hover:text-[#FFD23F] transition-colors pb-1 group">
-                                    READ THE DOCS <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                </a>
-                            </div>
-                        </div>
-
-                    </div>
+        {/* Final CTA */}
+        <section className="border-t border-border">
+          <div className="container-custom py-24">
+            <Reveal>
+              <div className="panel hairline-top relative overflow-hidden rounded-2xl px-8 py-16 text-center sm:px-16">
+                <div className="pointer-events-none absolute inset-0 -z-10 bg-dots opacity-40" />
+                <div className="pointer-events-none absolute left-1/2 top-full -z-10 h-72 w-[640px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-[120px]" />
+                <h2 className="mx-auto max-w-2xl text-3xl font-semibold tracking-tight sm:text-4xl">Point your first domain at Stackryze DNS.</h2>
+                <p className="mx-auto mt-4 max-w-lg text-lg text-muted-foreground">Free, open, and ready when you are. Create a zone in under a minute.</p>
+                <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+                  <Button asChild size="lg"><Link to="/login">Get started free <ArrowUpRight className="h-4 w-4" /></Link></Button>
+                  <Button asChild size="lg" variant="outline"><a href="https://github.com/stackryze/DNS" target="_blank" rel="noreferrer">View on GitHub</a></Button>
                 </div>
-            </section>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+      </main>
 
-            {/* Footer - Stackryze Design */}
-            <footer className="bg-[#1A1A1A] text-white pt-12 pb-4 px-6">
-                <div className="w-full max-w-[1600px] mx-auto">
-                    <div className="flex flex-col md:flex-row justify-between gap-12 mb-8 md:items-start">
-                        {/* Brand Section */}
-                        <div className="space-y-6">
-                            <a href="/" className="flex items-center gap-4 group">
-                                <div className="flex items-center gap-3">
-                                    <img src="/stackryze_logo_white.png" alt="Stackryze Logo" className="h-10 w-auto" />
-                                    <span className="text-2xl font-bold text-white tracking-tight">Stackryze DNS</span>
-                                </div>
-                            </a>
-                            <p className="text-[#E5E3DF] text-sm max-w-sm leading-relaxed">
-                                Free DNS for Developers.<br />
-                                Built by developers, for developers.
-                            </p>
-
-                            <div className="space-y-1">
-                                <h5 className="text-[#38BDF8] font-bold text-xs uppercase tracking-wide mb-2">Verified Contact</h5>
-                                <p className="text-[#E5E3DF] text-sm font-mono">support@stackryze.com</p>
-                                <p className="text-[#E5E3DF] text-sm font-mono">reportabuse@stackryze.com</p>
-                                <p className="text-[#E5E3DF] text-sm font-mono">no-reply@stackryze.com</p>
-                                <p className="text-[#6B6B6B] text-xs max-w-sm mt-2 italic leading-relaxed">
-                                    Note: We don't send any messages from any other domains or prefixes whatsoever.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Links Section */}
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-10 md:gap-20">
-                            {/* Platform */}
-                            <div>
-                                <h4 className="font-bold text-base mb-4 text-white">Platform</h4>
-                                <ul className="space-y-3 text-sm">
-                                    <li><Link to="/dashboard" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">Dashboard</Link></li>
-                                    <li><a href="https://dns-docs.stackryze.com" target="_blank" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">Documentation</a></li>
-                                    <li><a href="https://status.stackryze.com/" target="_blank" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">System Status</a></li>
-                                    <li><Link to="/about" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">About</Link></li>
-                                </ul>
-                            </div>
-
-                            {/* Legal */}
-                            <div>
-                                <h4 className="font-bold text-base mb-4 text-white">Legal</h4>
-                                <ul className="space-y-3 text-sm">
-                                    <li><Link to="/terms" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">Terms of Service</Link></li>
-                                    <li><Link to="/privacy" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">Privacy Policy</Link></li>
-                                    <li><Link to="/aup" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">Acceptable Use</Link></li>
-                                    <li><Link to="/abuse" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">Report Abuse</Link></li>
-                                </ul>
-                            </div>
-
-                            {/* Connect */}
-                            <div>
-                                <h4 className="font-bold text-base mb-4 text-white">Connect</h4>
-                                <ul className="space-y-3 text-sm">
-                                    <li><a href="https://github.com/stackryze/DNS" target="_blank" rel="noreferrer" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">GitHub</a></li>
-                                    <li><a href="https://github.com/sponsors/sudheerbhuvana" target="_blank" rel="noreferrer" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">Sponsor ❤️</a></li>
-                                    <li><a href="https://twitter.com" target="_blank" rel="noreferrer" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">Twitter/X</a></li>
-                                    <li><a href="https://discord.gg/wr7s97cfM7" target="_blank" rel="noreferrer" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">Discord</a></li>
-                                    <li><a href="mailto:support@stackryze.com" className="text-[#E5E3DF] hover:text-[#38BDF8] transition-colors">Contact</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Bottom Attribution - No Border */}
-                    <div className="mt-8 flex justify-end">
-                        <p className="text-xs text-[#E5E3DF] text-right flex items-center gap-2">
-                            A project by <a href="https://stackryze.com" target="_blank" rel="noreferrer" className="font-bold text-white hover:text-[#38BDF8] transition-colors">Stackryze</a>
-                            <span className="px-1.5 py-0.5 rounded bg-[#333] text-[10px] text-white">Registered MSME, India</span>
-                        </p>
-                    </div>
-                </div>
-            </footer>
-        </div>
-    );
-};
-
-export default Landing;
+      <SiteFooter />
+    </div>
+  );
+}
