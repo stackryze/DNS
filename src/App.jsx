@@ -11,6 +11,7 @@ import Terms from './pages/legal/Terms';
 import AUP from './pages/legal/AUP';
 import Privacy from './pages/legal/Privacy';
 import Abuse from './pages/legal/Abuse';
+import ApiDocs from './pages/ApiDocs';
 import Layout from './components/Layout';
 import { TooltipProvider } from './components/ui/tooltip';
 import { Toaster } from './components/ui/sonner';
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/aup" element={<AUP />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/abuse" element={<Abuse />} />
+          <Route path="/api-docs" element={<ApiDocs />} />
 
           {/* Protected (app shell) */}
           <Route

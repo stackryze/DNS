@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getZoneDetails, getZoneRecords, addRecord, deleteRecord, deleteZone, verifyZone, verifyOwnership, exportZone } from '../services/api';
-import { ArrowLeft, Plus, Trash2, Globe, AlertCircle, Loader2, Copy, Check, AlertTriangle, Download, ShieldOff, RotateCw, MoreHorizontal, Pencil, X } from 'lucide-react';
+import { getZoneDetails, getZoneRecords, addRecord, deleteRecord, deleteZone, verifyZone, verifyOwnership, exportZone, batchRecords } from '../services/api';
+import { ArrowLeft, Plus, Trash2, Globe, AlertCircle, Loader2, Copy, Check, AlertTriangle, Download, ShieldOff, RotateCw, MoreHorizontal, Pencil, X, Sparkles, FileUp, Search, Wrench, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -14,6 +14,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '../components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '../components/ui/dropdown-menu';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../components/ui/tooltip';
+import TemplatesDialog from '../components/zone/TemplatesDialog';
+import ImportScanDialog from '../components/zone/ImportScanDialog';
+import BulkImportDialog from '../components/zone/BulkImportDialog';
+import RecordBuilders from '../components/zone/RecordBuilders';
+import ActivityTimeline from '../components/ActivityTimeline';
 import { cn } from '../lib/utils';
 
 const stripDot = (s) => (s && s.endsWith('.') ? s.slice(0, -1) : s);
@@ -212,6 +217,10 @@ export default function ZoneDetails() {
   const [submitting, setSubmitting] = useState(false);
   const [deletingKey, setDeletingKey] = useState(null);
   const [deletingZone, setDeletingZone] = useState(false);
+  const [toolsDialog, setToolsDialog] = useState(null); // 'templates' | 'import' | 'bulk'
+  const [selected, setSelected] = useState(() => new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [activityKey, setActivityKey] = useState(0);
 
   const fetchZoneMetadata = useCallback(async () => {
     try { setZone(await getZoneDetails(id, false)); }
@@ -267,6 +276,26 @@ export default function ZoneDetails() {
     try { await deleteRecord(id, row.name, row.type, row.content); toast.success(`${row.type} record deleted`); }
     catch (err) { setRecords(snapshot); toast.error('Failed to delete: ' + (err.response?.data?.error || err.message)); }
     finally { setDeletingKey(null); }
+  };
+
+  const afterTool = () => { fetchRecords(searchQuery); fetchZoneMetadata(); setActivityKey((k) => k + 1); };
+
+  const toggleSelect = (key) => setSelected((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+
+  const bulkDelete = async (selectedRows) => {
+    setBulkDeleting(true);
+    try {
+      const del = selectedRows.map((r) => ({ name: r.name, type: r.type, content: r.content }));
+      const res = await batchRecords(id, { delete: del });
+      if (res.deleted > 0) toast.success(`Deleted ${res.deleted} record${res.deleted > 1 ? 's' : ''}`);
+      if (res.errors?.length) toast.warning(`${res.errors.length} could not be deleted`);
+      setSelected(new Set());
+      afterTool();
+    } catch (err) {
+      toast.error('Bulk delete failed: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   const handleDeleteZone = async () => {
@@ -409,9 +438,34 @@ export default function ZoneDetails() {
               <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => fetchRecords(searchQuery)} aria-label="Refresh records"><RotateCw className={cn('h-4 w-4', loadingRecords && 'animate-spin')} /></Button></TooltipTrigger>
               <TooltipContent>Refresh</TooltipContent>
             </Tooltip>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild><Button variant="outline"><Wrench className="h-4 w-4" /> Tools</Button></DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setToolsDialog('templates')}><Sparkles /> Record templates</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setToolsDialog('import')}><Search /> Import existing DNS</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setToolsDialog('bulk')}><FileUp /> Bulk import</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setToolsDialog('builder')}><Wrench /> SPF / DMARC builder</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={() => setRecordDialog({ open: true, initial: null })}><Plus className="h-4 w-4" /> Add record</Button>
           </div>
         </div>
+
+        {selected.size > 0 && (
+          <div className="flex items-center justify-between rounded-xl border border-primary/30 bg-primary/5 px-4 py-2.5">
+            <span className="text-sm text-foreground">{selected.size} record{selected.size > 1 ? 's' : ''} selected</span>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => setSelected(new Set())}>Clear</Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild><Button variant="destructive" size="sm" disabled={bulkDeleting}>{bulkDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Delete selected</Button></AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader><AlertDialogTitle>Delete {selected.size} record{selected.size > 1 ? 's' : ''}?</AlertDialogTitle><AlertDialogDescription>This permanently removes the selected DNS records. This cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                  <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => bulkDelete(rows.filter((r) => selected.has(`${r.name}-${r.type}-${r.content}`)))}>Delete</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+        )}
 
         <div className="panel overflow-hidden rounded-xl">
           {loadingRecords && rows.length === 0 ? (
@@ -422,6 +476,18 @@ export default function ZoneDetails() {
             <Table className="min-w-[640px]">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-10">
+                    <button
+                      aria-label="Select all records"
+                      onClick={() => {
+                        const keys = rows.filter((r) => r.type !== 'SOA' && r.type !== 'NS').map((r) => `${r.name}-${r.type}-${r.content}`);
+                        setSelected((prev) => (keys.every((k) => prev.has(k)) ? new Set() : new Set(keys)));
+                      }}
+                      className={cn('flex h-4 w-4 items-center justify-center rounded border', selected.size > 0 ? 'border-primary bg-primary text-primary-foreground' : 'border-border')}
+                    >
+                      {selected.size > 0 && <Check className="h-3 w-3" />}
+                    </button>
+                  </TableHead>
                   <TableHead className="w-20">Type</TableHead><TableHead className="w-48">Name</TableHead><TableHead>Content</TableHead><TableHead className="w-24">TTL</TableHead><TableHead className="w-16 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -431,6 +497,17 @@ export default function ZoneDetails() {
                   const locked = row.type === 'SOA' || row.type === 'NS';
                   return (
                     <TableRow key={`${key}-${i}`} className="group hover:bg-secondary/40">
+                      <TableCell className="align-top">
+                        {!locked && (
+                          <button
+                            aria-label="Select record"
+                            onClick={() => toggleSelect(key)}
+                            className={cn('flex h-4 w-4 items-center justify-center rounded border', selected.has(key) ? 'border-primary bg-primary text-primary-foreground' : 'border-border')}
+                          >
+                            {selected.has(key) && <Check className="h-3 w-3" />}
+                          </button>
+                        )}
+                      </TableCell>
                       <TableCell className="align-top"><RecordTypeBadge type={row.type} /></TableCell>
                       <TableCell className="align-top break-all font-mono text-xs text-foreground">{stripDot(row.name)}</TableCell>
                       <TableCell className="align-top break-all font-mono text-xs text-muted-foreground"><span className="inline-flex items-center gap-1">{stripDot(row.content)}<CopyButton value={stripDot(row.content)} /></span></TableCell>
@@ -462,6 +539,21 @@ export default function ZoneDetails() {
       </div>
 
       <RecordFormDialog open={recordDialog.open} onOpenChange={(o) => setRecordDialog((d) => ({ ...d, open: o }))} zoneName={zone.name} initial={recordDialog.initial} onSubmit={submitRecord} submitting={submitting} />
+
+      {!isBlocked && (
+        <div className="panel rounded-xl p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-semibold text-foreground">Recent activity</h2>
+          </div>
+          <ActivityTimeline key={activityKey} zoneId={id} limit={15} />
+        </div>
+      )}
+
+      <TemplatesDialog open={toolsDialog === 'templates'} onOpenChange={(o) => setToolsDialog(o ? 'templates' : null)} zoneId={id} zoneName={zone.name} onApplied={afterTool} />
+      <ImportScanDialog open={toolsDialog === 'import'} onOpenChange={(o) => setToolsDialog(o ? 'import' : null)} zoneId={id} zoneName={zone.name} onApplied={afterTool} />
+      <BulkImportDialog open={toolsDialog === 'bulk'} onOpenChange={(o) => setToolsDialog(o ? 'bulk' : null)} zoneId={id} zoneName={zone.name} onApplied={afterTool} />
+      <RecordBuilders open={toolsDialog === 'builder'} onOpenChange={(o) => setToolsDialog(o ? 'builder' : null)} zoneId={id} onApplied={afterTool} />
     </div>
   );
 }
