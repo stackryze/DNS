@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, ArrowUpRight } from 'lucide-react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+
 const LINKS = [
   { label: 'Features', href: '#features' },
   { label: 'Network', href: '#network' },
@@ -12,12 +14,27 @@ const LINKS = [
 export default function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  // Seed instantly from localStorage, then verify without tripping the axios 401 redirect.
+  const [authed, setAuthed] = useState(() => localStorage.getItem('sr_auth') === '1');
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    fetch(`${API_URL}/auth/me`, { credentials: 'include' })
+      .then((r) => {
+        if (!alive) return;
+        setAuthed(r.ok);
+        if (r.ok) localStorage.setItem('sr_auth', '1');
+        else localStorage.removeItem('sr_auth');
+      })
+      .catch(() => {});
+    return () => { alive = false; };
   }, []);
 
   return (
@@ -52,18 +69,32 @@ export default function SiteHeader() {
           </nav>
 
           <div className="hidden items-center gap-2 md:flex">
-            <Link to="/login" className="rounded-full px-3.5 py-1.5 text-sm text-muted-foreground transition-colors duration-300 hover:text-foreground">
-              Sign in
-            </Link>
-            <Link
-              to="/login"
-              className="group flex items-center gap-2 rounded-full bg-[linear-gradient(180deg,var(--primary-bright),var(--primary))] py-1 pl-4 pr-1 text-sm font-medium text-primary-foreground transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
-            >
-              Get started
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/15 transition-transform duration-300 group-hover:translate-x-0.5">
-                <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
-              </span>
-            </Link>
+            {authed ? (
+              <Link
+                to="/dashboard"
+                className="group flex items-center gap-2 rounded-full bg-[linear-gradient(180deg,var(--primary-bright),var(--primary))] py-1 pl-4 pr-1 text-sm font-medium text-primary-foreground transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+              >
+                Dashboard
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/15 transition-transform duration-300 group-hover:translate-x-0.5">
+                  <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
+                </span>
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className="rounded-full px-3.5 py-1.5 text-sm text-muted-foreground transition-colors duration-300 hover:text-foreground">
+                  Sign in
+                </Link>
+                <Link
+                  to="/login"
+                  className="group flex items-center gap-2 rounded-full bg-[linear-gradient(180deg,var(--primary-bright),var(--primary))] py-1 pl-4 pr-1 text-sm font-medium text-primary-foreground transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]"
+                >
+                  Get started
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/15 transition-transform duration-300 group-hover:translate-x-0.5">
+                    <ArrowUpRight className="h-3.5 w-3.5" strokeWidth={2} />
+                  </span>
+                </Link>
+              </>
+            )}
           </div>
 
           <button onClick={() => setOpen((v) => !v)} className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-white/[0.05] hover:text-foreground md:hidden" aria-label="Toggle menu">
@@ -83,8 +114,8 @@ export default function SiteHeader() {
                   <a key={l.label} href={l.href} target={l.external ? '_blank' : undefined} rel={l.external ? 'noreferrer' : undefined} className="rounded-2xl px-4 py-2.5 text-sm text-muted-foreground hover:bg-white/[0.05] hover:text-foreground">{l.label}</a>
                 )
               )}
-              <Link to="/login" onClick={() => setOpen(false)} className="mt-1 flex items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,var(--primary-bright),var(--primary))] px-4 py-2.5 text-sm font-medium text-primary-foreground">
-                Get started <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
+              <Link to={authed ? '/dashboard' : '/login'} onClick={() => setOpen(false)} className="mt-1 flex items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,var(--primary-bright),var(--primary))] px-4 py-2.5 text-sm font-medium text-primary-foreground">
+                {authed ? 'Go to dashboard' : 'Get started'} <ArrowUpRight className="h-4 w-4" strokeWidth={2} />
               </Link>
             </div>
           </div>
