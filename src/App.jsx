@@ -5,6 +5,7 @@ import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import ZoneDetails from './pages/ZoneDetails';
 import DNSChecker from './pages/DNSChecker';
+import Edge from './pages/Edge';
 import Settings from './pages/Settings';
 import NotFound from './pages/NotFound';
 import Terms from './pages/legal/Terms';
@@ -43,6 +44,7 @@ export default function App() {
                   <Route path="/zones" element={<Dashboard />} />
                   <Route path="/zones/:id" element={<ZoneDetails />} />
                   <Route path="/dns-checker" element={<DNSChecker />} />
+                  <Route path="/edge" element={<Edge />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
