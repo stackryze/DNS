@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { getZones, createZone } from '../services/api';
+import { getZones, createZone, cloneZone } from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Globe, ArrowUpDown, Loader2, Search, Server, ShieldCheck, ShieldOff, Clock, ChevronRight, RotateCw, Inbox } from 'lucide-react';
+import { Plus, Globe, ArrowUpDown, Loader2, Search, Server, ShieldCheck, ShieldOff, Clock, ChevronRight, RotateCw, Inbox, MoreHorizontal, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -11,6 +11,7 @@ import { Label } from '../components/ui/label';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../components/ui/select';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '../components/ui/dialog';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../components/ui/dropdown-menu';
 import { cn } from '../lib/utils';
 
 const STATUS = {
@@ -100,6 +101,53 @@ function SortHeader({ label, active, onClick, className }) {
   );
 }
 
+function CloneDialog({ source, zones, onOpenChange, onDone }) {
+  const [targetId, setTargetId] = useState('');
+  const [cloning, setCloning] = useState(false);
+  const targets = zones.filter((z) => z._id !== source?._id);
+
+  const doClone = async () => {
+    if (!targetId) return;
+    setCloning(true);
+    try {
+      const res = await cloneZone(source._id, targetId);
+      if (res.created > 0) toast.success(`Copied ${res.created} record${res.created > 1 ? 's' : ''}`);
+      if (res.errors?.length) toast.warning(`${res.errors.length} skipped (duplicates or limits)`);
+      if (res.created === 0) toast.message('No records were copied');
+      onDone?.();
+      onOpenChange(false);
+    } catch (err) {
+      toast.error('Clone failed: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setCloning(false);
+    }
+  };
+
+  return (
+    <Dialog open={!!source} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Clone records</DialogTitle>
+          <DialogDescription>Copy all records from <span className="font-mono text-foreground">{source?.name}</span> into another zone.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-1.5">
+          <Label>Target zone</Label>
+          <Select value={targetId} onValueChange={setTargetId}>
+            <SelectTrigger><SelectValue placeholder="Choose a zone…" /></SelectTrigger>
+            <SelectContent>
+              {targets.length === 0 ? <SelectItem value="none" disabled>No other zones</SelectItem> : targets.map((z) => <SelectItem key={z._id} value={z._id}>{z.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={doClone} disabled={!targetId || cloning}>{cloning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />} Clone records</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [zones, setZones] = useState([]);
@@ -109,6 +157,7 @@ export default function Dashboard() {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sort, setSort] = useState({ key: 'updatedAt', dir: 'desc' });
+  const [cloneSource, setCloneSource] = useState(null);
 
   const fetchZones = useCallback(async () => {
     setLoading(true); setError(null);
@@ -210,7 +259,15 @@ export default function Dashboard() {
                     <TableCell><StatusBadge status={zone.status} /></TableCell>
                     <TableCell className="text-muted-foreground">{zone.records_count || 0}</TableCell>
                     <TableCell className="text-muted-foreground">{new Date(zone.updatedAt).toLocaleDateString()}</TableCell>
-                    <TableCell><ChevronRight className="h-4 w-4 text-muted-foreground" /></TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Zone actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onSelect={() => navigate(`/zones/${zone._id}`)}><ChevronRight /> Open zone</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => setCloneSource(zone)}><Copy /> Clone records…</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -230,6 +287,8 @@ export default function Dashboard() {
           </div>
         </>
       )}
+
+      <CloneDialog source={cloneSource} zones={zones} onOpenChange={(o) => !o && setCloneSource(null)} onDone={fetchZones} />
     </div>
   );
 }

@@ -8,6 +8,7 @@ const COLS = [
     links: [
       { label: 'Dashboard', to: '/dashboard' },
       { label: 'DNS Checker', to: '/dns-checker' },
+      { label: 'API', to: '/api-docs' },
       { label: 'Docs', href: 'https://dns-docs.stackryze.com' },
       { label: 'Status', href: 'https://status.stackryze.com' },
     ],
