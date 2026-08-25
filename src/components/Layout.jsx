@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Globe, Settings, LogOut, Search, Command as CommandIcon, Bell,
-  Menu, Activity, ExternalLink, Heart, FileText, Github, ChevronsUpDown, User,
+  Menu, Activity, ExternalLink, Heart, FileText, Github, ChevronsUpDown, User, Gauge,
 } from 'lucide-react';
 import { getMe } from '../services/api';
 import CommandMenu from './CommandMenu';
@@ -16,6 +16,7 @@ import { cn } from '../lib/utils';
 const NAV = [
   { icon: LayoutDashboard, label: 'Dashboard', to: '/dashboard' },
   { icon: Activity, label: 'DNS Checker', to: '/dns-checker' },
+  { icon: Gauge, label: 'Edge monitoring', to: '/edge' },
   { icon: Settings, label: 'Settings', to: '/settings' },
 ];
 

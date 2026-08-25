@@ -127,6 +127,11 @@ export const getDnssec = async (zoneId) => (await api.get(`/zones/${zoneId}/dnss
 export const enableDnssec = async (zoneId) => (await api.post(`/zones/${zoneId}/dnssec`)).data;
 export const disableDnssec = async (zoneId) => (await api.delete(`/zones/${zoneId}/dnssec`)).data;
 
+/* ------------------------- Edge monitoring ---------------------- */
+export const getEdgeOverview = async () => (await api.get('/edge/overview')).data;
+export const getEdgeMetrics = async ({ zoneId, region, hours = 24 } = {}) =>
+  (await api.get('/edge/metrics', { params: { zoneId, region, hours } })).data;
+
 /* ---------------------------- Webhooks -------------------------- */
 export const listWebhooks = async () => (await api.get('/webhooks')).data;
 export const createWebhook = async (url, events) => (await api.post('/webhooks', { url, events })).data;
