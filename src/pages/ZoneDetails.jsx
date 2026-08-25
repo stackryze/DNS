@@ -372,9 +372,9 @@ export default function ZoneDetails() {
             <div className="mt-1"><StatusBadge status={zone.status} /></div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={() => setDiagnoseOpen(true)}><Stethoscope className="h-4 w-4" /> Diagnose</Button>
-          <Button variant="outline" onClick={handleExportZone}><Download className="h-4 w-4" /> Export</Button>
+          <Button variant="outline" onClick={handleExportZone} className="hidden sm:inline-flex"><Download className="h-4 w-4" /> Export</Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="Zone actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -466,8 +466,8 @@ export default function ZoneDetails() {
             <h2 className="text-lg font-semibold text-foreground">DNS records</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">{zone.records_count || rows.length}/{zone.recordLimit || 200} records</p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 sm:w-56"><Input placeholder="Search records…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} aria-label="Search records" /></div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-full sm:w-56"><Input placeholder="Search records…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} aria-label="Search records" /></div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-28"><SelectValue placeholder="Type" /></SelectTrigger>
               <SelectContent><SelectItem value="all">All types</SelectItem>{availableTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
@@ -518,7 +518,7 @@ export default function ZoneDetails() {
           </div>
         )}
 
-        <div className="panel overflow-hidden rounded-xl">
+        <div className="panel overflow-x-auto rounded-xl">
           {loadingRecords && rows.length === 0 ? (
             <div className="divide-y divide-border">{Array.from({ length: 4 }).map((_, i) => (<div key={i} className="flex items-center gap-4 px-4 py-4"><Skeleton className="h-5 w-14 rounded-md" /><Skeleton className="h-4 w-32" /><Skeleton className="h-4 flex-1" /><Skeleton className="h-4 w-16" /></div>))}</div>
           ) : rows.length === 0 ? (
