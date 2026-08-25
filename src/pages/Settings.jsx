@@ -4,6 +4,7 @@ import { getMe } from '../services/api';
 import { Skeleton } from '../components/ui/skeleton';
 import { Button } from '../components/ui/button';
 import ApiTokens from '../components/settings/ApiTokens';
+import Webhooks from '../components/settings/Webhooks';
 
 export default function Settings() {
   const [user, setUser] = useState(null);
@@ -39,6 +40,7 @@ export default function Settings() {
       </section>
 
       <ApiTokens />
+      <Webhooks />
     </div>
   );
 }

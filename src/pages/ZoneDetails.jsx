@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { getZoneDetails, getZoneRecords, addRecord, deleteRecord, deleteZone, verifyZone, verifyOwnership, exportZone, batchRecords } from '../services/api';
-import { ArrowLeft, Plus, Trash2, Globe, AlertCircle, Loader2, Copy, Check, AlertTriangle, Download, ShieldOff, RotateCw, MoreHorizontal, Pencil, X, Sparkles, FileUp, Search, Wrench, Activity } from 'lucide-react';
+import { getZoneDetails, getZoneRecords, addRecord, deleteRecord, deleteZone, verifyZone, verifyOwnership, exportZone, batchRecords, getRecordMeta } from '../services/api';
+import { ArrowLeft, Plus, Trash2, Globe, AlertCircle, Loader2, Copy, Check, AlertTriangle, Download, ShieldOff, RotateCw, MoreHorizontal, Pencil, X, Sparkles, FileUp, Search, Wrench, Activity, Stethoscope, Timer, CalendarClock, Tag, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -18,10 +18,15 @@ import TemplatesDialog from '../components/zone/TemplatesDialog';
 import ImportScanDialog from '../components/zone/ImportScanDialog';
 import BulkImportDialog from '../components/zone/BulkImportDialog';
 import RecordBuilders from '../components/zone/RecordBuilders';
+import DiagnoseDialog from '../components/zone/DiagnoseDialog';
+import TemporaryRecordDialog from '../components/zone/TemporaryRecordDialog';
+import ScheduleDialog from '../components/zone/ScheduleDialog';
+import RecordMetaDialog from '../components/zone/RecordMetaDialog';
 import ActivityTimeline from '../components/ActivityTimeline';
 import { cn } from '../lib/utils';
 
 const stripDot = (s) => (s && s.endsWith('.') ? s.slice(0, -1) : s);
+const metaKey = (r) => `${stripDot(r.name)}|${r.type}|${stripDot(r.content)}`;
 
 const TYPE_TONE = {
   A: 'text-primary', AAAA: 'text-primary', CNAME: 'text-foreground', NS: 'text-foreground',
@@ -221,6 +226,10 @@ export default function ZoneDetails() {
   const [selected, setSelected] = useState(() => new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [activityKey, setActivityKey] = useState(0);
+  const [diagnoseOpen, setDiagnoseOpen] = useState(false);
+  const [meta, setMeta] = useState({}); // recordKey -> { comment, labels }
+  const [metaDialog, setMetaDialog] = useState(null); // { key, label, initial }
+  const [labelFilter, setLabelFilter] = useState('all');
 
   const fetchZoneMetadata = useCallback(async () => {
     try { setZone(await getZoneDetails(id, false)); }
@@ -235,7 +244,16 @@ export default function ZoneDetails() {
     finally { setLoadingRecords(false); }
   }, [id]);
 
-  useEffect(() => { fetchZoneMetadata(); fetchRecords(''); }, [fetchZoneMetadata, fetchRecords]);
+  const fetchMeta = useCallback(async () => {
+    try {
+      const data = await getRecordMeta(id);
+      const map = {};
+      (data.meta || []).forEach((m) => { map[m.recordKey] = { comment: m.comment, labels: m.labels || [] }; });
+      setMeta(map);
+    } catch { /* metadata is best-effort */ }
+  }, [id]);
+
+  useEffect(() => { fetchZoneMetadata(); fetchRecords(''); fetchMeta(); }, [fetchZoneMetadata, fetchRecords, fetchMeta]);
   useEffect(() => { const t = setTimeout(() => fetchRecords(searchQuery), 400); return () => clearTimeout(t); }, [searchQuery, fetchRecords]);
 
   const handleVerifyZone = async () => {
@@ -278,7 +296,7 @@ export default function ZoneDetails() {
     finally { setDeletingKey(null); }
   };
 
-  const afterTool = () => { fetchRecords(searchQuery); fetchZoneMetadata(); setActivityKey((k) => k + 1); };
+  const afterTool = () => { fetchRecords(searchQuery); fetchZoneMetadata(); fetchMeta(); setActivityKey((k) => k + 1); };
 
   const toggleSelect = (key) => setSelected((prev) => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
 
@@ -306,9 +324,12 @@ export default function ZoneDetails() {
 
   const rows = useMemo(() => {
     const flat = (records || []).flatMap((rr) => (rr.records || []).map((r) => ({ name: rr.name, type: rr.type, ttl: rr.ttl, content: r.content })));
-    return typeFilter === 'all' ? flat : flat.filter((r) => r.type === typeFilter);
-  }, [records, typeFilter]);
+    let list = typeFilter === 'all' ? flat : flat.filter((r) => r.type === typeFilter);
+    if (labelFilter !== 'all') list = list.filter((r) => (meta[metaKey(r)]?.labels || []).includes(labelFilter));
+    return list;
+  }, [records, typeFilter, labelFilter, meta]);
   const availableTypes = useMemo(() => Array.from(new Set((records || []).map((rr) => rr.type))).sort(), [records]);
+  const availableLabels = useMemo(() => Array.from(new Set(Object.values(meta).flatMap((m) => m.labels || []))).sort(), [meta]);
 
   if (loading) return <div className="flex min-h-[50vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (error) return (
@@ -337,6 +358,7 @@ export default function ZoneDetails() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setDiagnoseOpen(true)}><Stethoscope className="h-4 w-4" /> Diagnose</Button>
           <Button variant="outline" onClick={handleExportZone}><Download className="h-4 w-4" /> Export</Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild><Button variant="outline" size="icon" aria-label="Zone actions"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -434,6 +456,12 @@ export default function ZoneDetails() {
               <SelectTrigger className="w-28"><SelectValue placeholder="Type" /></SelectTrigger>
               <SelectContent><SelectItem value="all">All types</SelectItem>{availableTypes.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
             </Select>
+            {availableLabels.length > 0 && (
+              <Select value={labelFilter} onValueChange={setLabelFilter}>
+                <SelectTrigger className="w-28"><SelectValue placeholder="Label" /></SelectTrigger>
+                <SelectContent><SelectItem value="all">All labels</SelectItem>{availableLabels.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
+              </Select>
+            )}
             <Tooltip>
               <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => fetchRecords(searchQuery)} aria-label="Refresh records"><RotateCw className={cn('h-4 w-4', loadingRecords && 'animate-spin')} /></Button></TooltipTrigger>
               <TooltipContent>Refresh</TooltipContent>
@@ -445,6 +473,8 @@ export default function ZoneDetails() {
                 <DropdownMenuItem onSelect={() => setToolsDialog('import')}><Search /> Import existing DNS</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setToolsDialog('bulk')}><FileUp /> Bulk import</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => setToolsDialog('builder')}><Wrench /> SPF / DMARC builder</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setToolsDialog('temporary')}><Timer /> Temporary record</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setToolsDialog('schedule')}><CalendarClock /> Schedule change</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <Button onClick={() => setRecordDialog({ open: true, initial: null })}><Plus className="h-4 w-4" /> Add record</Button>
@@ -510,11 +540,27 @@ export default function ZoneDetails() {
                       </TableCell>
                       <TableCell className="align-top"><RecordTypeBadge type={row.type} /></TableCell>
                       <TableCell className="align-top break-all font-mono text-xs text-foreground">{stripDot(row.name)}</TableCell>
-                      <TableCell className="align-top break-all font-mono text-xs text-muted-foreground"><span className="inline-flex items-center gap-1">{stripDot(row.content)}<CopyButton value={stripDot(row.content)} /></span></TableCell>
+                      <TableCell className="align-top break-all font-mono text-xs text-muted-foreground">
+                        <span className="inline-flex items-center gap-1">{stripDot(row.content)}<CopyButton value={stripDot(row.content)} /></span>
+                        {(() => {
+                          const m = meta[metaKey(row)];
+                          if (!m || (!m.comment && (!m.labels || m.labels.length === 0))) return null;
+                          return (
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              {m.comment && <span className="inline-flex items-center gap-1 font-sans text-[11px] italic text-muted-foreground"><MessageSquare className="h-3 w-3" />{m.comment}</span>}
+                              {(m.labels || []).map((l) => <span key={l} className="rounded-full border border-border bg-secondary px-2 py-0.5 font-sans text-[10px] text-foreground">{l}</span>)}
+                            </div>
+                          );
+                        })()}
+                      </TableCell>
                       <TableCell className="align-top text-xs text-muted-foreground">{row.ttl}s</TableCell>
                       <TableCell className="align-top text-right">
                         {!locked && (
                           <div className="flex items-center justify-end gap-0.5">
+                            <Tooltip>
+                              <TooltipTrigger asChild><button onClick={() => setMetaDialog({ key: metaKey(row), label: `${stripDot(row.name)} ${row.type}`, initial: meta[metaKey(row)] })} className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Tag className="h-3.5 w-3.5" /></button></TooltipTrigger>
+                              <TooltipContent>Comment &amp; labels</TooltipContent>
+                            </Tooltip>
                             <Tooltip>
                               <TooltipTrigger asChild><button onClick={() => setRecordDialog({ open: true, initial: row })} className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-3.5 w-3.5" /></button></TooltipTrigger>
                               <TooltipContent>Edit</TooltipContent>
@@ -554,6 +600,18 @@ export default function ZoneDetails() {
       <ImportScanDialog open={toolsDialog === 'import'} onOpenChange={(o) => setToolsDialog(o ? 'import' : null)} zoneId={id} zoneName={zone.name} onApplied={afterTool} />
       <BulkImportDialog open={toolsDialog === 'bulk'} onOpenChange={(o) => setToolsDialog(o ? 'bulk' : null)} zoneId={id} zoneName={zone.name} onApplied={afterTool} />
       <RecordBuilders open={toolsDialog === 'builder'} onOpenChange={(o) => setToolsDialog(o ? 'builder' : null)} zoneId={id} onApplied={afterTool} />
+      <TemporaryRecordDialog open={toolsDialog === 'temporary'} onOpenChange={(o) => setToolsDialog(o ? 'temporary' : null)} zoneId={id} zoneName={zone.name} onApplied={afterTool} />
+      <ScheduleDialog open={toolsDialog === 'schedule'} onOpenChange={(o) => setToolsDialog(o ? 'schedule' : null)} zoneId={id} zoneName={zone.name} onApplied={afterTool} />
+      <DiagnoseDialog open={diagnoseOpen} onOpenChange={setDiagnoseOpen} zoneName={zone.name} />
+      <RecordMetaDialog
+        open={!!metaDialog}
+        onOpenChange={(o) => !o && setMetaDialog(null)}
+        zoneId={id}
+        recordKey={metaDialog?.key}
+        recordLabel={metaDialog?.label}
+        initial={metaDialog?.initial}
+        onSaved={(key, val) => setMeta((prev) => ({ ...prev, [key]: val }))}
+      />
     </div>
   );
 }
