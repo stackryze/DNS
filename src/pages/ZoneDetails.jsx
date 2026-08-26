@@ -80,6 +80,41 @@ function CopyButton({ value }) {
   );
 }
 
+// Record row actions (annotate / edit / delete) — shared by the desktop table and mobile cards.
+function RecordActions({ row, deleting, onAnnotate, onEdit, onDelete }) {
+  return (
+    <div className="flex items-center justify-end gap-0.5">
+      <Tooltip>
+        <TooltipTrigger asChild><button onClick={onAnnotate} className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Tag className="h-3.5 w-3.5" /></button></TooltipTrigger>
+        <TooltipContent>Comment &amp; labels</TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild><button onClick={onEdit} className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-3.5 w-3.5" /></button></TooltipTrigger>
+        <TooltipContent>Edit</TooltipContent>
+      </Tooltip>
+      <AlertDialog>
+        <AlertDialogTrigger asChild><button aria-label="Delete record" disabled={deleting} className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">{deleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button></AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>Delete {row.type} record?</AlertDialogTitle><AlertDialogDescription className="break-all font-mono text-xs">{stripDot(row.content)}</AlertDialogDescription></AlertDialogHeader>
+          {riskWarning(row) && <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{riskWarning(row)}</div>}
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction></AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// Inline comment + labels for a record — shared by the desktop table and mobile cards.
+function RecordMetaTags({ m }) {
+  if (!m || (!m.comment && (!m.labels || m.labels.length === 0))) return null;
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+      {m.comment && <span className="inline-flex items-center gap-1 font-sans text-[11px] italic text-muted-foreground"><MessageSquare className="h-3 w-3" />{m.comment}</span>}
+      {(m.labels || []).map((l) => <span key={l} className="rounded-full border border-border bg-secondary px-2 py-0.5 font-sans text-[10px] text-foreground">{l}</span>)}
+    </div>
+  );
+}
+
 const TTL_OPTIONS = [
   { v: '3600', l: '1 hour' }, { v: '7200', l: '2 hours' }, { v: '21600', l: '6 hours' },
   { v: '43200', l: '12 hours' }, { v: '86400', l: '1 day' }, { v: '604800', l: '1 week' },
@@ -518,13 +553,14 @@ export default function ZoneDetails() {
           </div>
         )}
 
-        <div className="panel overflow-x-auto rounded-xl">
+        <div className="panel overflow-hidden rounded-xl">
           {loadingRecords && rows.length === 0 ? (
             <div className="divide-y divide-border">{Array.from({ length: 4 }).map((_, i) => (<div key={i} className="flex items-center gap-4 px-4 py-4"><Skeleton className="h-5 w-14 rounded-md" /><Skeleton className="h-4 w-32" /><Skeleton className="h-4 flex-1" /><Skeleton className="h-4 w-16" /></div>))}</div>
           ) : rows.length === 0 ? (
             <div className="flex flex-col items-center py-16 text-center"><Globe className="mb-3 h-8 w-8 text-muted-foreground" /><p className="text-sm text-muted-foreground">{searchQuery ? 'No matching records.' : 'No DNS records yet.'}</p></div>
           ) : (
-            <Table className="min-w-[640px]">
+            <>
+            <Table className="hidden min-w-[640px] md:table">
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-10">
@@ -563,38 +599,18 @@ export default function ZoneDetails() {
                       <TableCell className="align-top break-all font-mono text-xs text-foreground">{stripDot(row.name)}</TableCell>
                       <TableCell className="align-top break-all font-mono text-xs text-muted-foreground">
                         <span className="inline-flex items-center gap-1">{stripDot(row.content)}<CopyButton value={stripDot(row.content)} /></span>
-                        {(() => {
-                          const m = meta[metaKey(row)];
-                          if (!m || (!m.comment && (!m.labels || m.labels.length === 0))) return null;
-                          return (
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                              {m.comment && <span className="inline-flex items-center gap-1 font-sans text-[11px] italic text-muted-foreground"><MessageSquare className="h-3 w-3" />{m.comment}</span>}
-                              {(m.labels || []).map((l) => <span key={l} className="rounded-full border border-border bg-secondary px-2 py-0.5 font-sans text-[10px] text-foreground">{l}</span>)}
-                            </div>
-                          );
-                        })()}
+                        <RecordMetaTags m={meta[metaKey(row)]} />
                       </TableCell>
                       <TableCell className="align-top text-xs text-muted-foreground">{row.ttl}s</TableCell>
                       <TableCell className="align-top text-right">
                         {!locked && (
-                          <div className="flex items-center justify-end gap-0.5">
-                            <Tooltip>
-                              <TooltipTrigger asChild><button onClick={() => setMetaDialog({ key: metaKey(row), label: `${stripDot(row.name)} ${row.type}`, initial: meta[metaKey(row)] })} className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Tag className="h-3.5 w-3.5" /></button></TooltipTrigger>
-                              <TooltipContent>Comment &amp; labels</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild><button onClick={() => setRecordDialog({ open: true, initial: row })} className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"><Pencil className="h-3.5 w-3.5" /></button></TooltipTrigger>
-                              <TooltipContent>Edit</TooltipContent>
-                            </Tooltip>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild><button aria-label="Delete record" disabled={deletingKey === key} className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50">{deletingKey === key ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}</button></AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader><AlertDialogTitle>Delete {row.type} record?</AlertDialogTitle><AlertDialogDescription className="break-all font-mono text-xs">{stripDot(row.content)}</AlertDialogDescription></AlertDialogHeader>
-                                {riskWarning(row) && <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/5 px-3 py-2 text-xs text-warning"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />{riskWarning(row)}</div>}
-                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => deleteOne(row)}>Delete</AlertDialogAction></AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                          <RecordActions
+                            row={row}
+                            deleting={deletingKey === key}
+                            onAnnotate={() => setMetaDialog({ key: metaKey(row), label: `${stripDot(row.name)} ${row.type}`, initial: meta[metaKey(row)] })}
+                            onEdit={() => setRecordDialog({ open: true, initial: row })}
+                            onDelete={() => deleteOne(row)}
+                          />
                         )}
                       </TableCell>
                     </TableRow>
@@ -602,6 +618,60 @@ export default function ZoneDetails() {
                 })}
               </TableBody>
             </Table>
+
+            <ul className="divide-y divide-border md:hidden">
+              {rows.map((row, i) => {
+                const key = `${row.name}-${row.type}-${row.content}`;
+                const locked = row.type === 'SOA' || row.type === 'NS';
+                return (
+                  <li key={`${key}-m-${i}`} className="px-3 py-3">
+                    <div className="flex items-start gap-2.5">
+                      {!locked ? (
+                        <button
+                          aria-label="Select record"
+                          onClick={() => toggleSelect(key)}
+                          className={cn('mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border', selected.has(key) ? 'border-primary bg-primary text-primary-foreground' : 'border-border')}
+                        >
+                          {selected.has(key) && <Check className="h-3 w-3" />}
+                        </button>
+                      ) : (
+                        <span className="mt-0.5 h-4 w-4 shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <RecordTypeBadge type={row.type} />
+                            <span className="truncate font-mono text-xs text-foreground">{stripDot(row.name)}</span>
+                          </div>
+                          {!locked && (
+                            <RecordActions
+                              row={row}
+                              deleting={deletingKey === key}
+                              onAnnotate={() => setMetaDialog({ key: metaKey(row), label: `${stripDot(row.name)} ${row.type}`, initial: meta[metaKey(row)] })}
+                              onEdit={() => setRecordDialog({ open: true, initial: row })}
+                              onDelete={() => deleteOne(row)}
+                            />
+                          )}
+                        </div>
+                        <div className="mt-1.5 flex items-start gap-1 break-all font-mono text-xs text-muted-foreground">
+                          <span className="min-w-0 flex-1">{stripDot(row.content)}</span>
+                          <button
+                            onClick={() => { navigator.clipboard.writeText(stripDot(row.content)); toast.success('Copied'); }}
+                            aria-label="Copy content"
+                            className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                        <RecordMetaTags m={meta[metaKey(row)]} />
+                        <div className="mt-1.5 text-[11px] text-muted-foreground">TTL {row.ttl}s</div>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            </>
           )}
         </div>
       </div>

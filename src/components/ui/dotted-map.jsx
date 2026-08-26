@@ -13,7 +13,7 @@ const MapDots = React.memo(function MapDots({ points, xStep, yToRowIndex, dotCol
 });
 
 // ClickHouse-style dotted world map. Dots form the continents; markers pin locations.
-export function DottedMap({
+function DottedMapSvg({
   width = 150,
   height = 75,
   mapSamples = 5000,
@@ -88,5 +88,38 @@ export function DottedMap({
         );
       })}
     </svg>
+  );
+}
+
+// Defer the (thousands of SVG nodes) map render until it scrolls near the viewport,
+// reserving the aspect-ratio box so there is no layout shift when it mounts.
+export function DottedMap(props) {
+  const { width = 150, height = 75 } = props;
+  const containerRef = React.useRef(null);
+  const [inView, setInView] = React.useState(false);
+
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") {
+      setInView(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setInView(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: "300px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} style={{ width: "100%", aspectRatio: `${width} / ${height}` }}>
+      {inView && <DottedMapSvg {...props} />}
+    </div>
   );
 }
