@@ -134,7 +134,7 @@ export default function Layout({ children }) {
       </aside>
 
       {/* Main column */}
-      <div className="flex min-h-screen flex-1 flex-col md:ml-64">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:ml-64">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-border bg-background/80 px-4 backdrop-blur-md md:px-6">
           <div className="flex items-center gap-2">
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>

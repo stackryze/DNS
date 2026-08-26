@@ -1,27 +1,38 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Landing from './pages/Landing';
 import Auth from './pages/Auth';
-import Dashboard from './pages/Dashboard';
-import ZoneDetails from './pages/ZoneDetails';
-import DNSChecker from './pages/DNSChecker';
-import Edge from './pages/Edge';
-import Settings from './pages/Settings';
-import NotFound from './pages/NotFound';
-import Terms from './pages/legal/Terms';
-import AUP from './pages/legal/AUP';
-import Privacy from './pages/legal/Privacy';
-import Abuse from './pages/legal/Abuse';
-import ApiDocs from './pages/ApiDocs';
 import Layout from './components/Layout';
 import { TooltipProvider } from './components/ui/tooltip';
 import { Toaster } from './components/ui/sonner';
 import './index.css';
 
+// Code-split app pages so the public landing page ships a small initial bundle.
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const ZoneDetails = lazy(() => import('./pages/ZoneDetails'));
+const DNSChecker = lazy(() => import('./pages/DNSChecker'));
+const Edge = lazy(() => import('./pages/Edge'));
+const Settings = lazy(() => import('./pages/Settings'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const Terms = lazy(() => import('./pages/legal/Terms'));
+const AUP = lazy(() => import('./pages/legal/AUP'));
+const Privacy = lazy(() => import('./pages/legal/Privacy'));
+const Abuse = lazy(() => import('./pages/legal/Abuse'));
+const ApiDocs = lazy(() => import('./pages/ApiDocs'));
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </div>
+  );
+}
+
 export default function App() {
   return (
     <TooltipProvider delayDuration={200}>
       <Router>
+        <Suspense fallback={<RouteFallback />}>
         <Routes>
           {/* Public */}
           <Route path="/" element={<Landing />} />
@@ -52,6 +63,7 @@ export default function App() {
             }
           />
         </Routes>
+        </Suspense>
       </Router>
       <Toaster />
     </TooltipProvider>
