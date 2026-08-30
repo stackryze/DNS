@@ -100,7 +100,10 @@ export default function Layout({ children }) {
   const initials = (user?.username || user?.name || '?').slice(0, 1).toUpperCase();
 
   return (
-    <div className="flex min-h-screen font-sans text-foreground">
+    // translate="no": the app shell shows DNS data (record types, hostnames, values)
+    // that must not be machine-translated, and page translators mutating this subtree
+    // are what crash React's reconciler here.
+    <div className="flex min-h-screen font-sans text-foreground" translate="no">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground">
         Skip to content
       </a>
